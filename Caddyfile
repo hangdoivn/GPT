@@ -1,0 +1,6 @@
+# Caddy tự động xin & gia hạn chứng chỉ HTTPS (Let's Encrypt) cho domain.
+# Chỉ cần domain đã trỏ A record về IP của VPS.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy app:3000
+}

@@ -1,0 +1,53 @@
+# Deploy app quản lý fanpage lên VPS: app + Postgres + Caddy (tự cấp HTTPS).
+# Dùng: điền .env (copy từ .env.deploy.example) rồi chạy: docker compose up -d --build
+
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: hangdoi
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: hangdoi
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hangdoi -d hangdoi"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build: .
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://hangdoi:${DB_PASSWORD}@db:5432/hangdoi?schema=public
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
+      APP_URL: https://${DOMAIN}
+      FACEBOOK_GRAPH_VERSION: ${FACEBOOK_GRAPH_VERSION:-v21.0}
+      FACEBOOK_WEBHOOK_VERIFY_TOKEN: ${FACEBOOK_WEBHOOK_VERIFY_TOKEN}
+      CRON_SECRET: ${CRON_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:
