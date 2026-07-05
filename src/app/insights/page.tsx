@@ -13,14 +13,14 @@ interface Data {
   source: "facebook" | "demo";
   note: string | null;
   fans: number;
-  series: { date: string; reach: number; engagement: number; fanAdds: number }[];
+  series: { date: string; reach: number; engagement: number; follows: number }[];
   analysis: {
     metric: {
       reachTotal: number;
       reachChangePct: number;
       engagementRate: number;
       fanAddsNet: number;
-      viewsTotal: number;
+      churnRatio: number;
       fans: number;
     };
     findings: Finding[];
@@ -79,7 +79,7 @@ export default function InsightsPage() {
         />
         <Stat label="Tỉ lệ tương tác" value={`${m.engagementRate}%`} tone={m.engagementRate >= 3 ? "good" : "warn"} />
         <Stat label="Follow mới (ròng)" value={fmt(m.fanAddsNet)} tone={m.fanAddsNet >= 0 ? "good" : "bad"} />
-        <Stat label="Lượt xem page" value={fmt(m.viewsTotal)} />
+        <Stat label="Tỉ lệ rời (churn)" value={m.churnRatio.toFixed(2)} tone={m.churnRatio > 0.5 ? "bad" : "good"} />
       </div>
 
       {/* Biểu đồ */}

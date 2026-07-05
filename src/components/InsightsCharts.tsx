@@ -16,7 +16,7 @@ interface Point {
   date: string;
   reach: number;
   engagement: number;
-  fanAdds: number;
+  follows: number;
 }
 
 const shortDate = (d: string) => d.slice(5); // MM-DD
@@ -55,7 +55,7 @@ export function FollowChart({ data }: { data: Point[] }) {
           formatter={(v: number) => [v.toLocaleString("vi-VN"), "Follow mới"]}
           labelFormatter={(l) => `Ngày ${l}`}
         />
-        <Bar dataKey="fanAdds" fill="#10b981" radius={[3, 3, 0, 0]} />
+        <Bar dataKey="follows" fill="#10b981" radius={[3, 3, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

@@ -14,12 +14,11 @@ export function demoInsights(days = 28): PageInsights {
     const wave = Math.sin(idx / 2) * 850;
     const trend = idx < days / 2 ? 4300 : 3500; // nửa sau tiếp cận thấp hơn
     const reach = Math.max(800, Math.round(trend + wave + (idx % 3) * 180));
-    const impressions = Math.round(reach * 1.6);
     const engagement = Math.round(reach * (0.06 + (idx % 4) * 0.008));
-    const fanAdds = Math.round(9 + Math.sin(idx) * 6 + (idx % 5) - 1);
-    const views = Math.round(reach * 0.05);
+    const follows = Math.max(0, Math.round(11 + Math.sin(idx) * 6 + (idx % 5) - 1));
+    const unfollows = Math.max(0, Math.round(2 + Math.sin(idx / 3) * 1.5 + (idx % 4 === 0 ? 1 : 0)));
 
-    series.push({ date, reach, impressions, engagement, fanAdds, views });
+    series.push({ date, reach, engagement, follows, unfollows });
   }
 
   return { fans: 12840, series };
