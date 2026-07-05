@@ -1,0 +1,106 @@
+// Data model cho app quản lý fanpage Hàng Đôi
+// SQLite mặc định để chạy local nhanh, đổi provider sang postgresql khi deploy.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Fanpage đang quản lý ──────────────────────────────────────
+model Page {
+  id          String   @id @default(cuid())
+  fbPageId    String   @unique // ID page trên Facebook
+  name        String
+  accessToken String? // page access token (mã hoá ở production)
+  category    String?
+  followers   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaigns Campaign[]
+  leads     Lead[]
+  posts     Post[]
+}
+
+// ─── Chiến dịch quảng cáo ──────────────────────────────────────
+model Campaign {
+  id          String   @id @default(cuid())
+  fbCampaignId String  @unique
+  pageId      String
+  name        String
+  objective   String? // LEAD_GENERATION, MESSAGES, ...
+  status      String   @default("ACTIVE") // ACTIVE, PAUSED, ARCHIVED
+  dailyBudget Float    @default(0)
+  spend       Float    @default(0)
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  page  Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  leads Lead[]
+
+  @@index([pageId])
+}
+
+// ─── Lead thu về từ ads / form / inbox ─────────────────────────
+model Lead {
+  id         String   @id @default(cuid())
+  fbLeadId   String?  @unique // ID lead trên Facebook (nếu từ Lead Ads)
+  pageId     String
+  campaignId String?
+
+  fullName String
+  phone    String?
+  email    String?
+  province String? // tỉnh/thành khách khai
+  message  String? // nội dung khách để lại
+  source   String   @default("lead_ad") // lead_ad, messenger, comment, manual, csv
+
+  // Kết quả chấm điểm chất lượng (0-100) và phân loại
+  score       Int    @default(0)
+  quality     String @default("unscored") // good, warm, junk, unscored
+  scoreReasons String? // JSON array lý do (giải thích vì sao rác)
+
+  // Trạng thái chăm sóc (CRM)
+  crmStatus String  @default("new") // new, contacted, qualified, won, lost
+  assignee  String?
+  note      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  page     Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([pageId])
+  @@index([campaignId])
+  @@index([quality])
+  @@index([crmStatus])
+}
+
+// ─── Bài đăng / lịch nội dung ──────────────────────────────────
+model Post {
+  id          String    @id @default(cuid())
+  fbPostId    String?   @unique
+  pageId      String
+  content     String
+  mediaUrl    String?
+  status      String    @default("draft") // draft, scheduled, published
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  likes       Int       @default(0)
+  comments    Int       @default(0)
+  shares      Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+  @@index([status])
+}
