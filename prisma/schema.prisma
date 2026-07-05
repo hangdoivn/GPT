@@ -1,5 +1,5 @@
 // Data model cho app quản lý fanpage Hàng Đôi
-// SQLite mặc định để chạy local nhanh, đổi provider sang postgresql khi deploy.
+// PostgreSQL cho production/deploy. Test local nhanh có thể tạm đổi sang sqlite.
 
 generator client {
   provider = "prisma-client-js"

@@ -1,5 +1,6 @@
 import { getOverview, getCampaignQuality } from "@/lib/analytics";
-import { StatCard, fmtVnd } from "@/components/ui";
+import { StatCard } from "@/components/ui";
+import { fmtVnd } from "@/lib/format";
 import { Toolbar } from "@/components/Toolbar";
 import Link from "next/link";
 

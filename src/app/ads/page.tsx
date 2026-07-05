@@ -1,5 +1,5 @@
 import { getCampaignQuality } from "@/lib/analytics";
-import { fmtVnd } from "@/components/ui";
+import { fmtVnd } from "@/lib/format";
 import { JunkChart } from "@/components/JunkChart";
 
 export const dynamic = "force-dynamic";

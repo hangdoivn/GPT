@@ -49,6 +49,6 @@ export function StatCard({
   );
 }
 
-export function fmtVnd(n: number): string {
-  return new Intl.NumberFormat("vi-VN").format(Math.round(n)) + "đ";
-}
+// fmtVnd đã chuyển sang @/lib/format để server component dùng được. Re-export cho
+// các client component đang import từ đây.
+export { fmtVnd } from "@/lib/format";
