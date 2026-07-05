@@ -8,6 +8,7 @@ App quản lý fanpage cho **Hàng Đôi Studio**, giải quyết trực tiếp 
 | --- | --- |
 | 🎯 **Lọc & chấm điểm lead** | Mỗi lead được chấm 0–100 điểm và phân loại **Chất lượng / Cần xác minh / Rác**, kèm lý do cụ thể (SĐT ảo, tên giả, spam…). |
 | 📈 **Theo dõi Ads** | Bảng + biểu đồ **tỉ lệ rác theo từng chiến dịch** và **chi phí / lead thật** — biết ngay ads nào nên tắt. |
+| 🔎 **Insights Page** | Kéo chỉ số page (tiếp cận, tương tác, follow, lượt xem) 28 ngày và **tự động phân tích** ra nhận định + khuyến nghị. |
 | 🤝 **CRM** | Kanban 5 bước: Mới → Đã liên hệ → Tiềm năng → Chốt đơn / Mất. |
 | 📝 **Nội dung** | Soạn, lưu nháp, lên lịch và đăng bài lên page. |
 | 🔌 **Facebook API** | Kéo lead từ Lead Ads, campaign từ Marketing API, webhook nhận lead realtime. |
