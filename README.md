@@ -53,6 +53,25 @@ App đã cấu hình sẵn để deploy serverless: build chạy `prisma migrate
 
 > Cron trên gói Vercel Hobby chạy 1 lần/ngày. Muốn đồng bộ dày hơn: dùng gói Pro, hoặc deploy lên host chạy tiến trình liên tục (Railway/Render) để dùng scheduler tích hợp sẵn trong app.
 
+## Deploy lên VPS bằng Docker (scheduler chạy nền, đồng bộ dày tuỳ ý)
+
+Cần: VPS có Docker + tên miền (vd `app.hangdoistudio.vn`) đã trỏ A record về IP VPS.
+
+**Nếu cổng 80/443 đang trống** — dùng bản kèm Caddy (tự cấp HTTPS):
+```bash
+git clone https://github.com/hangdoivn/GPT.git && cd GPT
+cp .env.deploy.example .env    # sửa DOMAIN + DB_PASSWORD
+docker compose up -d --build
+```
+
+**Nếu VPS đã có nginx/aaPanel** lo 80/443 — xem [`PROXY.md`](./PROXY.md):
+```bash
+docker compose -f docker-compose.proxy.yml up -d --build
+```
+
+Sau khi có HTTPS, khai báo trong Facebook App → *Valid OAuth Redirect URIs*:
+`https://<domain>/api/auth/facebook/callback`, rồi mở app → **Cài đặt → Đăng nhập với Facebook**.
+
 ## Kết nối Facebook
 
 Điền vào `.env` (xem `.env.example`):

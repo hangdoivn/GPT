@@ -1,0 +1,42 @@
+# Phương án B: VPS ĐÃ CÓ web server (nginx/Apache/aaPanel) lo cổng 80/443 + SSL.
+# App chỉ chạy cổng nội bộ 127.0.0.1:3001, proxy ngoài trỏ app.hangdoistudio.vn -> đó.
+# Dùng: docker compose -f docker-compose.proxy.yml up -d --build
+#
+# Sau đó cấu hình reverse proxy trên web server sẵn có (xem PROXY.md).
+
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: hangdoi
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: hangdoi
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hangdoi -d hangdoi"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build: .
+    restart: always
+    # Chỉ mở trên localhost của VPS — proxy ngoài (nginx) sẽ trỏ vào đây.
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      DATABASE_URL: postgresql://hangdoi:${DB_PASSWORD}@db:5432/hangdoi?schema=public
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
+      APP_URL: https://${DOMAIN}
+      FACEBOOK_GRAPH_VERSION: ${FACEBOOK_GRAPH_VERSION:-v21.0}
+      FACEBOOK_WEBHOOK_VERIFY_TOKEN: ${FACEBOOK_WEBHOOK_VERIFY_TOKEN}
+      CRON_SECRET: ${CRON_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
