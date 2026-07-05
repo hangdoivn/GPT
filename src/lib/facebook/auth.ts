@@ -38,6 +38,16 @@ async function fbGet<T>(path: string, params: Record<string, string>): Promise<T
   return json as T;
 }
 
+/**
+ * Origin gốc của app để dựng redirect_uri OAuth.
+ * Ưu tiên APP_URL (đặt tay), rồi VERCEL_URL (Vercel tự cấp), cuối cùng origin của request.
+ */
+export function appOrigin(reqOrigin: string): string {
+  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return reqOrigin;
+}
+
 function redirectUri(origin: string): string {
   return `${origin}/api/auth/facebook/callback`;
 }

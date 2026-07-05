@@ -25,15 +25,33 @@ Ngưỡng: `≥70` Chất lượng · `40–69` Cần xác minh · `<40` Rác. C
 
 ## Chạy local
 
+Cần một PostgreSQL (chạy nhanh bằng Docker: `docker run -e POSTGRES_PASSWORD=pass -p 5432:5432 postgres`).
+
 ```bash
 npm install
-cp .env.example .env      # điền token Facebook nếu có
-npm run db:push           # tạo SQLite database
+cp .env.example .env      # điền DATABASE_URL + App ID/Secret
+npm run db:push           # tạo bảng
 npm run db:seed           # (tuỳ chọn) nạp dữ liệu demo
 npm run dev               # http://localhost:3000
 ```
 
 Chưa có token Facebook vẫn dùng được: bấm **Nạp dữ liệu demo** hoặc **Import CSV** (export từ Facebook Ads/Forms) trên giao diện.
+
+## Deploy lên Vercel (khuyên dùng)
+
+App đã cấu hình sẵn để deploy serverless: build chạy `prisma migrate deploy` tự tạo bảng, và cron trong `vercel.json` gọi `/api/cron/sync` để đồng bộ định kỳ.
+
+1. **Import repo** vào Vercel (New Project → chọn repo GitHub này).
+2. **Thêm database**: tab Storage → tạo Postgres (Neon) → Vercel tự thêm biến `DATABASE_URL`.
+3. **Đặt Environment Variables**:
+   - `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`
+   - `APP_URL` = URL Vercel của bạn (vd `https://hangdoi.vercel.app`)
+   - `CRON_SECRET` = chuỗi ngẫu nhiên (bảo vệ endpoint cron)
+4. **Deploy**. Sau khi có URL, vào Facebook App → *Facebook Login → Valid OAuth Redirect URIs* dán:
+   `https://<domain-vercel>/api/auth/facebook/callback`
+5. Mở app → **Cài đặt → Đăng nhập với Facebook**.
+
+> Cron trên gói Vercel Hobby chạy 1 lần/ngày. Muốn đồng bộ dày hơn: dùng gói Pro, hoặc deploy lên host chạy tiến trình liên tục (Railway/Render) để dùng scheduler tích hợp sẵn trong app.
 
 ## Kết nối Facebook
 

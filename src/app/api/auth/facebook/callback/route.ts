@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { completeOAuth } from "@/lib/facebook/auth";
+import { completeOAuth, appOrigin } from "@/lib/facebook/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const origin = process.env.APP_URL || req.nextUrl.origin;
+    const origin = appOrigin(req.nextUrl.origin);
     const r = await completeOAuth(origin, code);
     settings.searchParams.set("connected", "1");
     settings.searchParams.set("pages", String(r.pages));
