@@ -3,6 +3,7 @@ import { resolveConfig, isConnected } from "@/lib/facebook/auth";
 import { prisma } from "@/lib/db";
 import { Suspense } from "react";
 import { FacebookConnect } from "@/components/FacebookConnect";
+import { SyncSettings } from "@/components/SyncSettings";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,10 @@ export default async function SettingsPage() {
         <Suspense fallback={<div className="text-sm text-gray-400">Đang tải…</div>}>
           <FacebookConnect />
         </Suspense>
+      </div>
+
+      <div className="card p-5">
+        <SyncSettings />
       </div>
 
       <div className="card p-5">

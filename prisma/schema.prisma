@@ -21,6 +21,17 @@ model FbConnection {
   updatedAt          DateTime  @updatedAt
 }
 
+// ─── Cấu hình đồng bộ định kỳ — bản ghi đơn (singleton) ────────
+model SyncConfig {
+  id              String    @id @default("singleton")
+  enabled         Boolean   @default(false)
+  intervalMinutes Int       @default(60)
+  lastSyncAt      DateTime?
+  lastStatus      String? // ok | error | skipped
+  lastMessage     String?
+  updatedAt       DateTime  @updatedAt
+}
+
 // ─── Fanpage đang quản lý ──────────────────────────────────────
 model Page {
   id          String   @id @default(cuid())
