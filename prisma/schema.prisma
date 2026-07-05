@@ -10,6 +10,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Kết nối Facebook (OAuth) — bản ghi đơn (singleton) ────────
+model FbConnection {
+  id                 String    @id @default("singleton")
+  userToken          String // long-lived user token (dùng cho Marketing API)
+  userTokenExpiresAt DateTime?
+  activePageFbId     String? // page đang được chọn để quản lý
+  adAccountId        String? // act_XXXX lấy tự động khi kết nối
+  connectedName      String? // tên user Facebook đã kết nối
+  updatedAt          DateTime  @updatedAt
+}
+
 // ─── Fanpage đang quản lý ──────────────────────────────────────
 model Page {
   id          String   @id @default(cuid())

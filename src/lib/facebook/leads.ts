@@ -2,7 +2,7 @@
 // Luồng: Page -> leadgen_forms -> leads.
 // https://developers.facebook.com/docs/marketing-api/guides/lead-ads/retrieving
 
-import { getConfig, graphAll } from "./client";
+import { graphAll, type FacebookConfig } from "./client";
 
 export interface RawFbLead {
   id: string;
@@ -62,16 +62,20 @@ function normalize(raw: RawFbLead): NormalizedLead {
 }
 
 /** Lấy toàn bộ lead của page (mọi form). */
-export async function fetchLeads(sinceUnix?: number): Promise<NormalizedLead[]> {
-  const cfg = getConfig();
+export async function fetchLeads(
+  cfg: Pick<FacebookConfig, "pageId" | "pageAccessToken">,
+  sinceUnix?: number,
+): Promise<NormalizedLead[]> {
   // Lấy danh sách form của page.
   const forms = await graphAll<{ id: string }>(`${cfg.pageId}/leadgen_forms`, {
+    token: cfg.pageAccessToken,
     params: { fields: "id,name,status" },
   });
 
   const all: NormalizedLead[] = [];
   for (const form of forms) {
     const leads = await graphAll<RawFbLead>(`${form.id}/leads`, {
+      token: cfg.pageAccessToken,
       params: {
         fields: "id,created_time,ad_id,campaign_id,field_data",
         filtering: sinceUnix

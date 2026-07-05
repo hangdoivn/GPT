@@ -1,6 +1,8 @@
 // Quản lý fanpage & bài đăng qua Graph API.
 
-import { getConfig, graph, graphAll } from "./client";
+import { graph, graphAll, type FacebookConfig } from "./client";
+
+type PageCfg = Pick<FacebookConfig, "pageId" | "pageAccessToken">;
 
 export interface FbPage {
   id: string;
@@ -19,9 +21,9 @@ export async function fetchManagedPages(userToken?: string): Promise<FbPage[]> {
 }
 
 /** Thông tin 1 page. */
-export async function fetchPage(pageId?: string): Promise<FbPage> {
-  const cfg = getConfig();
-  return graph<FbPage>(pageId ?? cfg.pageId, {
+export async function fetchPage(cfg: PageCfg): Promise<FbPage> {
+  return graph<FbPage>(cfg.pageId, {
+    token: cfg.pageAccessToken,
     params: { fields: "id,name,category,fan_count" },
   });
 }
@@ -36,9 +38,9 @@ export interface FbPost {
 }
 
 /** Bài đăng gần đây của page kèm số tương tác. */
-export async function fetchPosts(pageId?: string): Promise<FbPost[]> {
-  const cfg = getConfig();
-  return graphAll<FbPost>(`${pageId ?? cfg.pageId}/posts`, {
+export async function fetchPosts(cfg: PageCfg): Promise<FbPost[]> {
+  return graphAll<FbPost>(`${cfg.pageId}/posts`, {
+    token: cfg.pageAccessToken,
     params: {
       fields:
         "id,message,created_time,likes.summary(true),comments.summary(true),shares",
@@ -48,17 +50,17 @@ export async function fetchPosts(pageId?: string): Promise<FbPost[]> {
 
 /** Đăng bài mới (hoặc lên lịch nếu truyền scheduledUnix). */
 export async function publishPost(
+  cfg: PageCfg,
   message: string,
   scheduledUnix?: number,
-  pageId?: string,
 ): Promise<{ id: string }> {
-  const cfg = getConfig();
   const body: Record<string, unknown> = { message };
   if (scheduledUnix) {
     body.published = false;
     body.scheduled_publish_time = scheduledUnix;
   }
-  return graph<{ id: string }>(`${pageId ?? cfg.pageId}/feed`, {
+  return graph<{ id: string }>(`${cfg.pageId}/feed`, {
+    token: cfg.pageAccessToken,
     method: "POST",
     body,
   });

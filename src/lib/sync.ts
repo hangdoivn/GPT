@@ -2,7 +2,7 @@
 // Tách khỏi API route để tái sử dụng (cron, webhook, nút "Đồng bộ" trên UI).
 
 import { prisma } from "./db";
-import { isConfigured, getConfig } from "./facebook/client";
+import { resolveConfig, isConnected } from "./facebook/auth";
 import { fetchLeads } from "./facebook/leads";
 import { fetchCampaigns } from "./facebook/ads";
 import { fetchPage } from "./facebook/pages";
@@ -19,7 +19,7 @@ export interface SyncResult {
 
 /** Đảm bảo có bản ghi Page trong DB, trả về id nội bộ. */
 export async function ensurePage(): Promise<string> {
-  const cfg = getConfig();
+  const cfg = await resolveConfig();
   const fbPageId = cfg.pageId || "demo-page";
 
   const existing = await prisma.page.findUnique({ where: { fbPageId } });
@@ -28,9 +28,9 @@ export async function ensurePage(): Promise<string> {
   let name = "Hàng Đôi";
   let category: string | undefined;
   let followers = 0;
-  if (isConfigured()) {
+  if (cfg.pageAccessToken && cfg.pageId) {
     try {
-      const p = await fetchPage();
+      const p = await fetchPage(cfg);
       name = p.name;
       category = p.category;
       followers = p.fan_count ?? 0;
@@ -88,21 +88,22 @@ export async function upsertLead(
 
 /** Đồng bộ toàn bộ: page + campaigns + leads. */
 export async function syncAll(): Promise<SyncResult> {
-  if (!isConfigured()) {
+  if (!(await isConnected())) {
     return {
       campaigns: 0,
       leads: 0,
       junk: 0,
       skipped: true,
       message:
-        "Chưa cấu hình Facebook token. Vào Cài đặt để kết nối, hoặc dùng Import CSV / dữ liệu demo.",
+        "Chưa kết nối Facebook. Vào Cài đặt để đăng nhập, hoặc dùng Import CSV / dữ liệu demo.",
     };
   }
 
+  const cfg = await resolveConfig();
   const pageId = await ensurePage();
 
   // Campaigns
-  const campaigns = await fetchCampaigns();
+  const campaigns = await fetchCampaigns(cfg);
   const fbToDbCampaign = new Map<string, string>();
   for (const c of campaigns) {
     const rec = await prisma.campaign.upsert({
@@ -131,7 +132,7 @@ export async function syncAll(): Promise<SyncResult> {
   }
 
   // Leads
-  const leads = await fetchLeads();
+  const leads = await fetchLeads(cfg);
   let junk = 0;
   for (const l of leads) {
     const r = await upsertLead(pageId, {

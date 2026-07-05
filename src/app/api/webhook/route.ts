@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ensurePage, upsertLead } from "@/lib/sync";
 import { graph } from "@/lib/facebook/client";
+import { resolveConfig } from "@/lib/facebook/auth";
 import type { RawFbLead } from "@/lib/facebook/leads";
 import { normalizeLead } from "@/lib/facebook/leads";
 
@@ -28,6 +29,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  const cfg = await resolveConfig();
   const pageId = await ensurePage();
   for (const entry of body.entry ?? []) {
     for (const change of entry.changes ?? []) {
@@ -36,6 +38,7 @@ export async function POST(req: NextRequest) {
       if (!leadgenId) continue;
       try {
         const raw = await graph<RawFbLead>(leadgenId, {
+          token: cfg.pageAccessToken,
           params: { fields: "id,created_time,ad_id,campaign_id,field_data" },
         });
         const l = normalizeLead(raw);

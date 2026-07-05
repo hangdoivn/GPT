@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { ensurePage } from "@/lib/sync";
-import { isConfigured } from "@/lib/facebook/client";
+import { isConnected, resolveConfig } from "@/lib/facebook/auth";
 import { publishPost } from "@/lib/facebook/pages";
 import { z } from "zod";
 
@@ -33,10 +33,11 @@ export async function POST(req: NextRequest) {
   let fbPostId: string | undefined;
   let publishedAt: Date | undefined;
 
-  if ((publishNow || scheduledAt) && isConfigured()) {
+  if ((publishNow || scheduledAt) && (await isConnected())) {
     try {
+      const cfg = await resolveConfig();
       const scheduledUnix = scheduledAt ? Math.floor(new Date(scheduledAt).getTime() / 1000) : undefined;
-      const res = await publishPost(content, scheduledUnix);
+      const res = await publishPost(cfg, content, scheduledUnix);
       fbPostId = res.id;
       status = scheduledAt ? "scheduled" : "published";
       if (!scheduledAt) publishedAt = new Date();

@@ -1,7 +1,7 @@
 // Lấy chiến dịch quảng cáo + insight từ Marketing API.
 // https://developers.facebook.com/docs/marketing-api/insights
 
-import { getConfig, graph, graphAll } from "./client";
+import { graph, graphAll, type FacebookConfig } from "./client";
 
 export interface RawCampaign {
   id: string;
@@ -28,12 +28,17 @@ export interface NormalizedCampaign {
   clicks: number;
 }
 
-/** Lấy các campaign của ad account. */
-export async function fetchCampaigns(): Promise<NormalizedCampaign[]> {
-  const cfg = getConfig();
+/**
+ * Lấy các campaign của ad account.
+ * Dùng userToken (quyền ads_read) vì page token không đọc được ad account.
+ */
+export async function fetchCampaigns(
+  cfg: Pick<FacebookConfig, "adAccountId"> & { userToken: string },
+): Promise<NormalizedCampaign[]> {
   if (!cfg.adAccountId) return [];
 
   const campaigns = await graphAll<RawCampaign>(`${cfg.adAccountId}/campaigns`, {
+    token: cfg.userToken,
     params: { fields: "id,name,objective,status,daily_budget" },
   });
 
@@ -43,7 +48,7 @@ export async function fetchCampaigns(): Promise<NormalizedCampaign[]> {
     try {
       const res = await graph<{ data: Array<{ spend?: string; impressions?: string; clicks?: string }> }>(
         `${c.id}/insights`,
-        { params: { fields: "spend,impressions,clicks", date_preset: "maximum" } },
+        { token: cfg.userToken, params: { fields: "spend,impressions,clicks", date_preset: "maximum" } },
       );
       const row = res.data?.[0];
       if (row) {
