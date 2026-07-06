@@ -8,11 +8,13 @@ import { getConfig, FacebookApiError, type FacebookConfig } from "./client";
 export const OAUTH_SCOPES = [
   "pages_show_list",
   "pages_read_engagement",
-  "pages_manage_posts",
-  "pages_manage_metadata",
+  "read_insights", // page insights (tiếp cận/tương tác/follow) — cần cho Insights & Đánh giá tệp
+  "pages_manage_metadata", // đăng ký webhook leadgen (nhận lead realtime)
   "leads_retrieval",
   "ads_read",
   "business_management",
+  // "pages_manage_posts" đã bỏ: chỉ cần cho tính năng auto-đăng bài, phải xin qua
+  // App Review; giữ lại sẽ làm Facebook chặn cả luồng đăng nhập (Invalid Scopes).
 ];
 
 // Config đã phân giải: page token cho page endpoints, userToken cho Marketing API.
