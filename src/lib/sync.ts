@@ -15,6 +15,7 @@ export interface SyncResult {
   junk: number;
   skipped: boolean;
   message: string;
+  errors?: string[];
 }
 
 /** Đảm bảo có bản ghi Page trong DB, trả về id nội bộ. */
@@ -102,58 +103,74 @@ export async function syncAll(): Promise<SyncResult> {
   const cfg = await resolveConfig();
   const pageId = await ensurePage();
 
-  // Campaigns
-  const campaigns = await fetchCampaigns(cfg);
+  const errors: string[] = [];
+
+  // ── Campaigns (chịu lỗi: thiếu quyền ads thì bỏ qua, vẫn kéo lead) ──
   const fbToDbCampaign = new Map<string, string>();
-  for (const c of campaigns) {
-    const rec = await prisma.campaign.upsert({
-      where: { fbCampaignId: c.fbCampaignId },
-      create: {
-        fbCampaignId: c.fbCampaignId,
-        pageId,
-        name: c.name,
-        objective: c.objective,
-        status: c.status,
-        dailyBudget: c.dailyBudget,
-        spend: c.spend,
-        impressions: c.impressions,
-        clicks: c.clicks,
-      },
-      update: {
-        name: c.name,
-        status: c.status,
-        dailyBudget: c.dailyBudget,
-        spend: c.spend,
-        impressions: c.impressions,
-        clicks: c.clicks,
-      },
-    });
-    fbToDbCampaign.set(c.fbCampaignId, rec.id);
+  let campaignCount = 0;
+  try {
+    const campaigns = await fetchCampaigns(cfg);
+    for (const c of campaigns) {
+      const rec = await prisma.campaign.upsert({
+        where: { fbCampaignId: c.fbCampaignId },
+        create: {
+          fbCampaignId: c.fbCampaignId,
+          pageId,
+          name: c.name,
+          objective: c.objective,
+          status: c.status,
+          dailyBudget: c.dailyBudget,
+          spend: c.spend,
+          impressions: c.impressions,
+          clicks: c.clicks,
+        },
+        update: {
+          name: c.name,
+          status: c.status,
+          dailyBudget: c.dailyBudget,
+          spend: c.spend,
+          impressions: c.impressions,
+          clicks: c.clicks,
+        },
+      });
+      fbToDbCampaign.set(c.fbCampaignId, rec.id);
+    }
+    campaignCount = campaigns.length;
+  } catch (e) {
+    errors.push(`Chiến dịch ads: ${e instanceof Error ? e.message : e}`);
   }
 
-  // Leads
-  const leads = await fetchLeads(cfg);
+  // ── Leads (chịu lỗi độc lập với campaigns) ──
+  let leadCount = 0;
   let junk = 0;
-  for (const l of leads) {
-    const r = await upsertLead(pageId, {
-      fbLeadId: l.fbLeadId,
-      fullName: l.fullName,
-      phone: l.phone,
-      email: l.email,
-      province: l.province,
-      message: l.message,
-      source: "lead_ad",
-      campaignId: l.campaignFbId ? fbToDbCampaign.get(l.campaignFbId) : undefined,
-    });
-    if (r.junk) junk++;
+  try {
+    const leads = await fetchLeads(cfg);
+    for (const l of leads) {
+      const r = await upsertLead(pageId, {
+        fbLeadId: l.fbLeadId,
+        fullName: l.fullName,
+        phone: l.phone,
+        email: l.email,
+        province: l.province,
+        message: l.message,
+        source: "lead_ad",
+        campaignId: l.campaignFbId ? fbToDbCampaign.get(l.campaignFbId) : undefined,
+      });
+      if (r.junk) junk++;
+    }
+    leadCount = leads.length;
+  } catch (e) {
+    errors.push(`Lead: ${e instanceof Error ? e.message : e}`);
   }
 
+  const base = `Đã đồng bộ ${campaignCount} chiến dịch, ${leadCount} lead (${junk} rác).`;
   return {
     page: pageId,
-    campaigns: campaigns.length,
-    leads: leads.length,
+    campaigns: campaignCount,
+    leads: leadCount,
     junk,
     skipped: false,
-    message: `Đã đồng bộ ${campaigns.length} chiến dịch, ${leads.length} lead (${junk} rác).`,
+    errors,
+    message: errors.length ? `${base} ⚠️ ${errors.join(" · ")}` : base,
   };
 }

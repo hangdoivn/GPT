@@ -9,6 +9,7 @@ export const OAUTH_SCOPES = [
   "pages_show_list",
   "pages_read_engagement",
   "pages_manage_metadata", // đăng ký webhook leadgen (nhận lead realtime)
+  "pages_manage_ads", // FB yêu cầu để đọc leadgen_forms/leads của page (#200)
   "leads_retrieval",
   "ads_read",
   "business_management",
