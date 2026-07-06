@@ -47,11 +47,12 @@ export async function ensurePage(): Promise<string> {
   return created.id;
 }
 
-/** Chấm điểm + lưu 1 lead (upsert theo fbLeadId nếu có). */
+/** Chấm điểm + lưu 1 lead (upsert theo fbLeadId, hoặc update leadId có sẵn khi dedup). */
 export async function upsertLead(
   pageId: string,
   input: {
     fbLeadId?: string;
+    leadId?: string; // update bản ghi có sẵn (dùng khi dedup theo SĐT lúc import CSV)
     fullName: string;
     phone?: string;
     email?: string;
@@ -60,7 +61,7 @@ export async function upsertLead(
     source?: string;
     campaignId?: string;
   },
-): Promise<{ junk: boolean }> {
+): Promise<{ id: string; junk: boolean; quality: string; score: number; reasons: string[] }> {
   const s = scoreLead(input);
   const data = {
     pageId,
@@ -76,16 +77,38 @@ export async function upsertLead(
     scoreReasons: JSON.stringify(s.reasons),
   };
 
-  if (input.fbLeadId) {
-    await prisma.lead.upsert({
+  let id: string;
+  if (input.leadId) {
+    const rec = await prisma.lead.update({ where: { id: input.leadId }, data });
+    id = rec.id;
+  } else if (input.fbLeadId) {
+    const rec = await prisma.lead.upsert({
       where: { fbLeadId: input.fbLeadId },
       create: { ...data, fbLeadId: input.fbLeadId },
       update: data,
     });
+    id = rec.id;
   } else {
-    await prisma.lead.create({ data });
+    const rec = await prisma.lead.create({ data });
+    id = rec.id;
   }
-  return { junk: s.quality === "junk" };
+  return { id, junk: s.quality === "junk", quality: s.quality, score: s.score, reasons: s.reasons };
+}
+
+/**
+ * Tạo/lấy Campaign từ TÊN (khi import CSV không có fbCampaignId).
+ * Dùng fbCampaignId tổng hợp `csv:<slug>` để upsert ổn định, không trùng.
+ */
+export async function ensureCsvCampaign(pageId: string, name: string): Promise<string> {
+  const clean = name.trim().slice(0, 200);
+  const slug = clean.toLowerCase().replace(/\s+/g, "-").replace(/[^\wÀ-ɏ-]/g, "");
+  const fbCampaignId = `csv:${slug || "khong-ten"}`;
+  const rec = await prisma.campaign.upsert({
+    where: { fbCampaignId },
+    create: { fbCampaignId, pageId, name: clean, status: "CSV", objective: "IMPORT" },
+    update: { name: clean },
+  });
+  return rec.id;
 }
 
 /** Đồng bộ toàn bộ: page + campaigns + leads. */

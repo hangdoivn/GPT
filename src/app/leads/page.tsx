@@ -19,12 +19,109 @@ interface Lead {
   createdAt: string;
 }
 
+interface ImportReport {
+  imported: number;
+  updated: number;
+  junk: number;
+  total: number;
+  junkRate: number;
+  hasCampaigns: boolean;
+  byCampaign: { name: string; total: number; junk: number; junkRate: number }[];
+  byReason: { reason: string; count: number }[];
+}
+
 const FILTERS = [
   { key: "", label: "Tất cả" },
   { key: "good", label: "Chất lượng" },
   { key: "warm", label: "Cần xác minh" },
   { key: "junk", label: "Rác" },
 ];
+
+function rateTone(rate: number) {
+  if (rate >= 40) return "text-junk";
+  if (rate >= 20) return "text-warm";
+  return "text-good";
+}
+
+function ImportReportCard({ report, onClose }: { report: ImportReport; onClose: () => void }) {
+  const worst = report.byCampaign.filter((c) => c.name !== "(không rõ chiến dịch)");
+  return (
+    <div className="card p-4 border-l-4 border-l-brand bg-blue-50/40 space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="font-semibold">✅ Đã phân tích {report.total} lead</div>
+          <div className="text-sm text-gray-600 mt-0.5">
+            {report.imported} mới · {report.updated} trùng (cập nhật) ·{" "}
+            <span className={`font-semibold ${rateTone(report.junkRate)}`}>
+              {report.junk} rác ({report.junkRate}%)
+            </span>
+          </div>
+        </div>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Rác theo chiến dịch — thủ phạm nổi lên đầu */}
+        <div>
+          <div className="text-xs font-semibold text-gray-500 uppercase mb-2">
+            🎯 Rác theo chiến dịch {worst.length > 0 && "(tệ nhất trên cùng)"}
+          </div>
+          {worst.length === 0 ? (
+            <div className="text-sm text-gray-500">
+              File không có cột chiến dịch. Thêm cột <code>campaign_name</code> / <code>chiến dịch</code>{" "}
+              vào CSV để biết campaign nào ra rác và nên tắt cái nào.
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {worst.slice(0, 6).map((c) => (
+                <div key={c.name} className="flex items-center gap-2 text-sm">
+                  <div className="flex-1 min-w-0">
+                    <div className="truncate">{c.name}</div>
+                    <div className="h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${c.junkRate >= 40 ? "bg-junk" : c.junkRate >= 20 ? "bg-warm" : "bg-good"}`}
+                        style={{ width: `${Math.min(100, c.junkRate)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className={`w-24 text-right font-semibold ${rateTone(c.junkRate)}`}>
+                    {c.junkRate}% <span className="text-gray-400 font-normal">({c.junk}/{c.total})</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Rác vì lý do gì */}
+        <div>
+          <div className="text-xs font-semibold text-gray-500 uppercase mb-2">🔎 Lead rác vì lý do gì</div>
+          {report.byReason.length === 0 ? (
+            <div className="text-sm text-green-600">✓ Không có lead rác trong lần import này.</div>
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {report.byReason.slice(0, 6).map((r) => (
+                <li key={r.reason} className="flex justify-between gap-2">
+                  <span className="text-gray-700">{r.reason}</span>
+                  <span className="font-semibold text-junk shrink-0">{r.count}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {worst.some((c) => c.junkRate >= 40) && (
+        <div className="text-sm bg-red-50 text-red-700 rounded-lg px-3 py-2">
+          💡 <b>Khuyến nghị:</b> chiến dịch{" "}
+          <b>{worst.filter((c) => c.junkRate >= 40).map((c) => c.name).slice(0, 3).join(", ")}</b>{" "}
+          đang ra rác ≥40% — cân nhắc tắt hoặc siết targeting. Xem chi tiết chẩn đoán ở mục{" "}
+          <a href="/audience" className="underline font-medium">Đánh giá tệp</a>.
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -33,6 +130,8 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [importReport, setImportReport] = useState<ImportReport | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,15 +150,19 @@ export default function LeadsPage() {
   async function onImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setImporting(true);
+    setImportMsg(null);
+    setImportReport(null);
     const text = await file.text();
     const res = await fetch("/api/leads/import", { method: "POST", body: text });
     const data = await res.json();
     if (res.ok) {
-      setImportMsg(`Import ${data.imported} lead (${data.junk} rác).`);
+      setImportReport(data as ImportReport);
       load();
     } else {
       setImportMsg(data.error ?? "Import lỗi");
     }
+    setImporting(false);
     e.target.value = "";
   }
 
@@ -79,8 +182,8 @@ export default function LeadsPage() {
         </div>
         <div className="flex items-center gap-2">
           <label className="btn-ghost cursor-pointer">
-            📥 Import CSV
-            <input type="file" accept=".csv,text/csv" className="hidden" onChange={onImport} />
+            {importing ? "⏳ Đang phân tích…" : "📥 Import CSV"}
+            <input type="file" accept=".csv,text/csv" className="hidden" onChange={onImport} disabled={importing} />
           </label>
           <button className="btn-primary" onClick={() => setShowAdd((v) => !v)}>
             ＋ Thêm lead
@@ -89,6 +192,7 @@ export default function LeadsPage() {
       </div>
 
       {importMsg && <div className="card p-3 text-sm text-gray-700 bg-blue-50">{importMsg}</div>}
+      {importReport && <ImportReportCard report={importReport} onClose={() => setImportReport(null)} />}
       {showAdd && <AddLeadForm onDone={() => { setShowAdd(false); load(); }} />}
 
       <div className="flex items-center gap-3 flex-wrap">
