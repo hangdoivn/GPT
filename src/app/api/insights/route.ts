@@ -16,15 +16,20 @@ export async function GET() {
   // ── Bài đăng: dữ liệu THẬT qua pages_read_engagement (không cần read_insights) ──
   let postsRaw = null;
   let postsSource: "facebook" | "demo" = "demo";
-  if (cfg) {
+  let postsNote: string | null = null;
+  if (!connected) {
+    postsNote = "Chưa kết nối Facebook — vào Cài đặt để đăng nhập.";
+  } else if (cfg) {
     try {
       const fetched = await fetchPosts(cfg);
       if (fetched.length > 0) {
         postsRaw = fetched;
         postsSource = "facebook";
+      } else {
+        postsNote = `Đã kết nối page "${cfg.pageId}" nhưng KHÔNG đọc được bài đăng nào. Kiểm tra: đã chọn đúng page (có nội dung) trong Cài đặt chưa? Đang hiển thị số minh hoạ.`;
       }
-    } catch {
-      /* thiếu quyền / page mới -> demo */
+    } catch (e) {
+      postsNote = `Đã kết nối nhưng đọc bài đăng lỗi: ${e instanceof Error ? e.message : e}. Đang hiển thị số minh hoạ.`;
     }
   }
   if (!postsRaw) postsRaw = demoPosts();
@@ -42,7 +47,7 @@ export async function GET() {
         pageSource = "facebook";
       } else {
         note =
-          "Biểu đồ tiếp cận/follow cần quyền read_insights (Facebook giới hạn với loại app hiện tại) — phần này là số minh hoạ. Hiệu quả BÀI ĐĂNG bên trên là số thật.";
+          "Biểu đồ tiếp cận/follow cần quyền read_insights (Facebook giới hạn với loại app hiện tại) — phần này là số minh hoạ.";
       }
     } catch (e) {
       note = `Page insights: ${e instanceof Error ? e.message : e}.`;
@@ -52,11 +57,12 @@ export async function GET() {
   const analysis = analyzeInsights(pageData);
 
   return NextResponse.json({
-    // Bài đăng (thật)
+    connected,
+    activePageId: cfg?.pageId ?? null,
     postsSource,
+    postsNote,
     posts,
     followers: pageData.fans,
-    // Page insights (reach/follow) — thật nếu có read_insights, else minh hoạ
     pageSource,
     note,
     series: pageData.series,

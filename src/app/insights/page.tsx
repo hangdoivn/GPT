@@ -18,7 +18,10 @@ interface PostStat {
   engagement: number;
 }
 interface Data {
+  connected: boolean;
+  activePageId: string | null;
   postsSource: "facebook" | "demo";
+  postsNote: string | null;
   followers: number;
   posts: {
     totalPosts: number;
@@ -77,10 +80,20 @@ export default function InsightsPage() {
           <h1 className="text-2xl font-bold">Insights Page — Hàng Đôi</h1>
           <p className="text-sm text-gray-500">Hiệu quả bài đăng & sức khoẻ fanpage 28 ngày gần nhất.</p>
         </div>
-        <span className={`badge ${data.postsSource === "facebook" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-          {data.postsSource === "facebook" ? "● Bài đăng: Facebook thật" : "○ Dữ liệu mẫu (chưa kết nối)"}
+        <span className={`badge ${data.postsSource === "facebook" ? "bg-green-100 text-green-700" : data.connected ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-500"}`}>
+          {data.postsSource === "facebook"
+            ? "● Bài đăng: Facebook thật"
+            : data.connected
+              ? "● Đã kết nối · số minh hoạ"
+              : "○ Chưa kết nối"}
         </span>
       </div>
+
+      {data.postsSource === "demo" && data.postsNote && (
+        <div className="card p-3 text-sm text-amber-800 bg-amber-50 border-l-4 border-l-warm">
+          ⚠️ {data.postsNote}
+        </div>
+      )}
 
       {/* Chỉ số bài đăng (THẬT) */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
