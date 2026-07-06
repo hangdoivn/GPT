@@ -25,7 +25,8 @@ ok "Docker sẵn sàng"
 
 gen_secret() { openssl rand -hex 24 2>/dev/null || head -c 48 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
 
-getval() { grep -E "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | sed 's/^"//; s/"$//'; }
+# Lấy giá trị 1 key trong .env. `|| true` để không kích hoạt set -e khi key vắng.
+getval() { grep -E "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | sed 's/^"//; s/"$//' || true; }
 set_env() {
   local key="$1" val="$2"
   if grep -qE "^${key}=" "$ENV_FILE"; then
