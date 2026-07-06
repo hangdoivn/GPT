@@ -77,18 +77,32 @@ set_env FACEBOOK_WEBHOOK_VERIFY_TOKEN "$WEBHOOK"
 set_env CRON_SECRET "$CRON"
 ok "Đã ghi .env cho domain $DOMAIN"
 
-# ── 3) Chọn compose theo cổng 80/443 ─────────────────────────
-PORTS_BUSY=0
-if command -v ss >/dev/null 2>&1; then
-  ss -ltn 2>/dev/null | grep -qE ':(80|443)\s' && PORTS_BUSY=1
-elif command -v lsof >/dev/null 2>&1; then
-  lsof -iTCP:80 -sTCP:LISTEN >/dev/null 2>&1 && PORTS_BUSY=1
-  lsof -iTCP:443 -sTCP:LISTEN >/dev/null 2>&1 && PORTS_BUSY=1
-fi
+# ── 3) Chọn compose theo cổng 80/443 + dò cổng nội bộ trống ──
+port_in_use() {
+  local p="$1"
+  if command -v ss >/dev/null 2>&1; then
+    ss -ltnH 2>/dev/null | awk '{print $4}' | grep -qE "[:.]${p}\$"
+  elif command -v lsof >/dev/null 2>&1; then
+    lsof -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1
+  else
+    return 1
+  fi
+}
 
-if [ "$PORTS_BUSY" -eq 1 ]; then
+APP_PORT="$(getval APP_PORT)"
+
+if port_in_use 80 || port_in_use 443; then
   COMPOSE="docker-compose.proxy.yml"
-  warn "Cổng 80/443 đang bận → dùng bản PROXY (app ở 127.0.0.1:3001). Xem PROXY.md để trỏ nginx/aaPanel."
+  # Tìm cổng nội bộ còn trống cho app.
+  if [ -z "$APP_PORT" ] || port_in_use "$APP_PORT"; then
+    APP_PORT=""
+    for p in 3001 3002 3005 3010 3100 4010 8081 8090 9001; do
+      if ! port_in_use "$p"; then APP_PORT="$p"; break; fi
+    done
+    [ -n "$APP_PORT" ] || die "Không tìm được cổng nội bộ trống (đã thử 3001..9001)."
+  fi
+  set_env APP_PORT "$APP_PORT"
+  warn "Cổng 80/443 đang bận → dùng bản PROXY, app chạy 127.0.0.1:${APP_PORT}. Trỏ nginx/aaPanel vào cổng này (xem PROXY.md)."
 else
   COMPOSE="docker-compose.yml"
   ok "Cổng 80/443 trống → dùng bản Caddy (tự cấp HTTPS)"
@@ -110,7 +124,7 @@ echo "2) Facebook App → Facebook Login → Valid OAuth Redirect URIs, dán:"
 echo "     https://${DOMAIN}/api/auth/facebook/callback"
 if [ "$COMPOSE" = "docker-compose.proxy.yml" ]; then
   echo
-  echo "→ VPS đã có web server: trỏ ${DOMAIN} tới http://127.0.0.1:3001 (hướng dẫn trong PROXY.md)."
+  echo "→ VPS đã có web server: trỏ ${DOMAIN} tới http://127.0.0.1:${APP_PORT} (hướng dẫn trong PROXY.md)."
 fi
 echo
 echo "Sau đó mở https://${DOMAIN} → Cài đặt → Đăng nhập với Facebook."

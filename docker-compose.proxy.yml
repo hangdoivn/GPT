@@ -24,8 +24,9 @@ services:
     build: .
     restart: always
     # Chỉ mở trên localhost của VPS — proxy ngoài (nginx) sẽ trỏ vào đây.
+    # Cổng host lấy từ APP_PORT (deploy.sh tự chọn cổng trống, mặc định 3001).
     ports:
-      - "127.0.0.1:3001:3000"
+      - "127.0.0.1:${APP_PORT:-3001}:3000"
     environment:
       DATABASE_URL: postgresql://hangdoi:${DB_PASSWORD}@db:5432/hangdoi?schema=public
       FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
