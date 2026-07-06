@@ -66,6 +66,9 @@ export function buildLoginUrl(origin: string, state: string): string {
   u.searchParams.set("scope", OAUTH_SCOPES.join(","));
   u.searchParams.set("state", state);
   u.searchParams.set("response_type", "code");
+  // Ép Facebook hỏi lại quyền chưa cấp (vd pages_read_engagement chưa hiệu lực cho page)
+  // và hiện lại bước "chọn page" để user cấp đủ.
+  u.searchParams.set("auth_type", "rerequest");
   return u.toString();
 }
 
