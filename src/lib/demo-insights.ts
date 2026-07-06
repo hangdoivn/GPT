@@ -1,5 +1,40 @@
 // Insight mẫu mô phỏng page Hàng Đôi (28 ngày) — dùng để test & khi chưa kết nối.
 import type { PageInsights } from "./facebook/insights";
+import type { FbPost } from "./facebook/pages";
+
+const DEMO_POST_MSG = [
+  "Bộ ảnh couple phong cách Hàn 🌸 đặt lịch tháng này giảm 20%",
+  "Behind the scene buổi chụp cưới hồ Tây 📸",
+  "Feedback khách hàng tuần này ❤️",
+  "Mini game: tag người yêu nhận voucher chụp đôi 🎁",
+  "Bảng giá gói chụp đôi mới cập nhật",
+  "Album kỷ niệm 3 năm của anh chị Minh & Hà",
+  "Tips tạo dáng chụp đôi tự nhiên",
+  "Lịch trống tuần tới — inbox giữ chỗ nhé!",
+];
+
+// Bài đăng mẫu 28 ngày (tương tác thật kiểu page couple/photo studio).
+export function demoPosts(days = 28): FbPost[] {
+  const today = new Date();
+  const out: FbPost[] = [];
+  // ~ cách 2-3 ngày 1 bài
+  for (let i = 0; i < 10; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - Math.floor((i * days) / 10));
+    const reactions = 20 + ((i * 37) % 120);
+    const comments = 3 + ((i * 11) % 25);
+    const shares = i % 3 === 0 ? 5 + (i % 7) : i % 5;
+    out.push({
+      id: `demo_post_${i}`,
+      message: DEMO_POST_MSG[i % DEMO_POST_MSG.length],
+      created_time: d.toISOString(),
+      likes: { summary: { total_count: reactions } },
+      comments: { summary: { total_count: comments } },
+      shares: { count: shares },
+    });
+  }
+  return out;
+}
 
 export function demoInsights(days = 28): PageInsights {
   const today = new Date();

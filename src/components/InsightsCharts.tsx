@@ -44,6 +44,29 @@ export function ReachChart({ data }: { data: Point[] }) {
   );
 }
 
+interface PostBar {
+  label: string; // ngày MM-DD
+  reactions: number;
+  comments: number;
+  shares: number;
+}
+
+export function PostsChart({ data }: { data: PostBar[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <BarChart data={data} margin={{ left: -10, right: 10, top: 10 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+        <XAxis dataKey="label" tick={{ fontSize: 11 }} minTickGap={8} />
+        <YAxis tick={{ fontSize: 11 }} width={40} />
+        <Tooltip labelFormatter={(l) => `Ngày ${l}`} />
+        <Bar dataKey="reactions" stackId="e" fill="#1877F2" name="Cảm xúc" radius={[0, 0, 0, 0]} />
+        <Bar dataKey="comments" stackId="e" fill="#10b981" name="Bình luận" />
+        <Bar dataKey="shares" stackId="e" fill="#f59e0b" name="Chia sẻ" radius={[3, 3, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
 export function FollowChart({ data }: { data: Point[] }) {
   return (
     <ResponsiveContainer width="100%" height={200}>
