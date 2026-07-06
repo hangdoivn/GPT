@@ -25,6 +25,7 @@ export interface AudienceInput {
   fanAddsNet: number; // follow ròng (follows - unfollows)
   churnRatio: number; // unfollows/follows
   followers: number;
+  insightsAvailable?: boolean; // false nếu thiếu quyền read_insights -> không phạt 2 trụ organic
   // Làm giàu từ Facebook (undefined nếu chưa kết nối / thiếu quyền)
   adBelowAvgShare?: number; // 0-1: tỉ lệ ad có quality_ranking dưới trung bình
   foreignReachRatio?: number; // 0-1: tỉ lệ reach ngoài VN (từ Ads breakdown)
@@ -93,15 +94,24 @@ export function evaluateAudience(input: AudienceInput): AudienceEval {
     adRelevance = clamp(100 - input.adBelowAvgShare * 100);
   }
 
+  // Thiếu quyền read_insights -> không có số organic thật -> tính TRUNG TÍNH,
+  // KHÔNG phạt (tránh phán quyết "page mới" oan). Phán quyết dựa vào lead + ads.
+  const insightsOn = input.insightsAvailable !== false;
+
   const erBase =
     input.engagementRate >= 5 ? 85 : input.engagementRate >= 3 ? 65 : input.engagementRate >= 1 ? 40 : 15;
   const reachAdj = input.reachTrendPct <= -20 ? -15 : input.reachTrendPct > 0 ? 5 : 0;
-  const organicVitality = clamp(erBase + reachAdj);
+  const organicVitality = insightsOn ? clamp(erBase + reachAdj) : 55;
 
-  let growthRetention = input.fanAddsNet > 0 ? 100 : input.fanAddsNet === 0 ? 55 : 10;
-  if (input.churnRatio > 0.5) growthRetention -= 30;
-  if (input.churnRatio > 1) growthRetention = 10;
-  growthRetention = clamp(growthRetention);
+  let growthRetention;
+  if (!insightsOn) {
+    growthRetention = 55;
+  } else {
+    growthRetention = input.fanAddsNet > 0 ? 100 : input.fanAddsNet === 0 ? 55 : 10;
+    if (input.churnRatio > 0.5) growthRetention -= 30;
+    if (input.churnRatio > 1) growthRetention = 10;
+    growthRetention = clamp(growthRetention);
+  }
 
   const pillars: Pillars = { leadPurity, adRelevance, organicVitality, growthRetention };
 
@@ -210,11 +220,12 @@ function diagnose(buckets: BucketStat[]): Diagnosis {
 }
 
 function countRedFlags(input: AudienceInput, d: Diagnosis): number {
+  const insightsOn = input.insightsAvailable !== false;
   let n = 0;
   if (input.junkRate > 60) n++;
-  if (input.engagementRate < 1) n++;
-  if (input.churnRatio > 0.5) n++;
-  if (input.fanAddsNet < 0) n++;
+  if (insightsOn && input.engagementRate < 1) n++; // chỉ tính khi có số insights thật
+  if (insightsOn && input.churnRatio > 0.5) n++;
+  if (insightsOn && input.fanAddsNet < 0) n++;
   if (input.foreignReachRatio !== undefined && input.foreignReachRatio > 0.25) n++;
   if (input.adBelowAvgShare !== undefined && input.adBelowAvgShare >= 0.5) n++;
   if (d.sourceFloor !== null && d.sourceFloor > 40) n++;
@@ -244,23 +255,31 @@ function buildSignals(input: AudienceInput, d: Diagnosis, redLine: boolean, redL
     detail: input.junkRate > 40 ? "Cao — nhiều SĐT ảo/tên giả lọt vào." : "Trong ngưỡng chấp nhận được.",
   });
 
-  out.push({
-    sentiment: input.engagementRate >= 3 ? "good" : input.engagementRate >= 1 ? "warn" : "bad",
-    title: `Tỉ lệ tương tác: ${input.engagementRate}%`,
-    detail:
-      input.engagementRate < 1
-        ? "Reach có nhưng gần như không ai tương tác — dấu hiệu tệp 'chai'/ghost."
-        : "Tệp còn phản hồi với nội dung.",
-  });
-
-  out.push({
-    sentiment: input.churnRatio > 0.5 ? "bad" : input.churnRatio > 0.3 ? "warn" : "good",
-    title: `Tỉ lệ rời page (churn): ${input.churnRatio.toFixed(2)}`,
-    detail:
-      input.churnRatio > 0.5
-        ? "Fan rời nhanh sau khi follow — thường là follow ảo/không thật bị quét."
-        : "Giữ chân ổn.",
-  });
+  if (input.insightsAvailable === false) {
+    out.push({
+      sentiment: "info",
+      title: "Chưa có chỉ số organic (tương tác/reach/churn)",
+      detail:
+        "App chưa được cấp quyền read_insights (Facebook giới hạn với loại app hiện tại). Phán quyết đang dựa trên lead + ads — 2 trụ organic tính trung tính, không phạt. Xin quyền qua App Review để mở đầy đủ.",
+    });
+  } else {
+    out.push({
+      sentiment: input.engagementRate >= 3 ? "good" : input.engagementRate >= 1 ? "warn" : "bad",
+      title: `Tỉ lệ tương tác: ${input.engagementRate}%`,
+      detail:
+        input.engagementRate < 1
+          ? "Reach có nhưng gần như không ai tương tác — dấu hiệu tệp 'chai'/ghost."
+          : "Tệp còn phản hồi với nội dung.",
+    });
+    out.push({
+      sentiment: input.churnRatio > 0.5 ? "bad" : input.churnRatio > 0.3 ? "warn" : "good",
+      title: `Tỉ lệ rời page (churn): ${input.churnRatio.toFixed(2)}`,
+      detail:
+        input.churnRatio > 0.5
+          ? "Fan rời nhanh sau khi follow — thường là follow ảo/không thật bị quét."
+          : "Giữ chân ổn.",
+    });
+  }
 
   if (input.foreignReachRatio !== undefined) {
     const pct = Math.round(input.foreignReachRatio * 1000) / 10;

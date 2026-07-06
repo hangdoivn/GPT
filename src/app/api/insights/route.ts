@@ -15,11 +15,17 @@ export async function GET() {
   if (await isConnected()) {
     try {
       const cfg = await resolveConfig();
-      data = await fetchPageInsights(cfg);
-      source = "facebook";
+      const fetched = await fetchPageInsights(cfg);
+      if (fetched.series.length > 0) {
+        data = fetched;
+        source = "facebook";
+      } else {
+        // Kết nối OK nhưng thiếu quyền read_insights -> chart trống. Dùng số minh hoạ + báo rõ.
+        note =
+          "Đã kết nối nhưng chưa cấp quyền read_insights (Facebook giới hạn với loại app hiện tại) — biểu đồ dưới là SỐ MINH HOẠ. Trang Đánh giá tệp không bị ảnh hưởng (dựa trên lead + ads).";
+      }
     } catch (e) {
-      // Token có thể thiếu quyền read_insights, hoặc page mới chưa đủ dữ liệu.
-      note = `Không lấy được insight thật: ${e instanceof Error ? e.message : e}. Đang hiển thị dữ liệu mẫu.`;
+      note = `Không lấy được insight: ${e instanceof Error ? e.message : e}. Đang hiển thị dữ liệu mẫu.`;
     }
   }
 
