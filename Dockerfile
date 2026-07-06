@@ -8,6 +8,8 @@ WORKDIR /app
 # Cài dependencies (tách layer để cache).
 FROM base AS deps
 COPY package.json package-lock.json ./
+# Copy prisma trước vì postinstall chạy `prisma generate` (cần schema).
+COPY prisma ./prisma
 RUN npm ci
 
 # Build.
