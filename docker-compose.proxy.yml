@@ -1,5 +1,5 @@
 # Phương án B: VPS ĐÃ CÓ web server (nginx/Apache/aaPanel) lo cổng 80/443 + SSL.
-# App chỉ chạy cổng nội bộ 127.0.0.1:3001, proxy ngoài trỏ app.hangdoistudio.vn -> đó.
+# App chỉ chạy cổng nội bộ 127.0.0.1:3001, proxy ngoài trỏ social.hangdoistudio.vn -> đó.
 # Dùng: docker compose -f docker-compose.proxy.yml up -d --build
 #
 # Sau đó cấu hình reverse proxy trên web server sẵn có (xem PROXY.md).

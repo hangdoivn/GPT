@@ -5,7 +5,7 @@
 #  theo cổng 80/443 → build & chạy → in bước còn lại.
 #
 #  Dùng:   ./deploy.sh
-#  Không hỏi: DOMAIN=app.hangdoistudio.vn FACEBOOK_APP_SECRET=xxx ./deploy.sh
+#  Không hỏi: DOMAIN=social.hangdoistudio.vn FACEBOOK_APP_SECRET=xxx ./deploy.sh
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -46,8 +46,8 @@ TTY=0; [ -t 0 ] && TTY=1  # chỉ hỏi khi có bàn phím
 
 DOMAIN="${DOMAIN:-$(getval DOMAIN)}"
 if is_placeholder "$DOMAIN"; then
-  if [ "$TTY" = 1 ]; then read -rp "Domain [app.hangdoistudio.vn]: " _d || true; DOMAIN="${_d:-app.hangdoistudio.vn}"
-  else DOMAIN="app.hangdoistudio.vn"; fi
+  if [ "$TTY" = 1 ]; then read -rp "Domain [social.hangdoistudio.vn]: " _d || true; DOMAIN="${_d:-social.hangdoistudio.vn}"
+  else DOMAIN="social.hangdoistudio.vn"; fi
 fi
 
 APP_ID="${FACEBOOK_APP_ID:-$(getval FACEBOOK_APP_ID)}"
@@ -120,7 +120,7 @@ ok "Đã khởi động xong."
 echo "──────────────────────────────────────────────"
 echo "CÒN 2 VIỆC (chỉ bạn làm được):"
 echo
-echo "1) DNS: thêm bản ghi A   app → ${PUBIP:-<IP-VPS>}   trong panel tên miền hangdoistudio.vn"
+echo "1) DNS: thêm bản ghi  A  ${DOMAIN%%.*} → ${PUBIP:-<IP-VPS>}  trong panel tên miền hangdoistudio.vn"
 echo "2) Facebook App → Facebook Login → Valid OAuth Redirect URIs, dán:"
 echo "     https://${DOMAIN}/api/auth/facebook/callback"
 if [ "$COMPOSE" = "docker-compose.proxy.yml" ]; then

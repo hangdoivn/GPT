@@ -57,7 +57,7 @@ App đã cấu hình sẵn để deploy serverless: build chạy `prisma migrate
 
 ## Deploy lên VPS bằng Docker (scheduler chạy nền, đồng bộ dày tuỳ ý)
 
-Cần: VPS có Docker + tên miền (vd `app.hangdoistudio.vn`) đã trỏ A record về IP VPS.
+Cần: VPS có Docker + tên miền (vd `social.hangdoistudio.vn`) đã trỏ A record về IP VPS.
 
 **Cách 1 lệnh (khuyên dùng)** — `deploy.sh` tự kiểm tra Docker, sinh secret, tự chọn
 bản Caddy (nếu 80/443 trống) hay bản proxy (nếu đã có nginx), build & chạy:
@@ -69,7 +69,7 @@ git clone https://github.com/hangdoivn/GPT.git && cd GPT
 Thủ công nếu muốn: `cp .env.deploy.example .env` → điền → `docker compose up -d --build`
 (hoặc `-f docker-compose.proxy.yml` khi đã có nginx/aaPanel, xem [`PROXY.md`](./PROXY.md)).
 
-Sau khi chạy, làm nốt 2 việc: (1) DNS `A: app → IP VPS`; (2) Facebook App →
+Sau khi chạy, làm nốt 2 việc: (1) DNS `A: social → IP VPS`; (2) Facebook App →
 *Valid OAuth Redirect URIs* dán `https://<domain>/api/auth/facebook/callback`.
 Rồi mở app → **Cài đặt → Đăng nhập với Facebook**.
 
