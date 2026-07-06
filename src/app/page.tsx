@@ -8,8 +8,9 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const [ov, campaigns] = await Promise.all([getOverview(), getCampaignQuality()]);
-  const empty = ov.totalLeads === 0;
-  const worst = campaigns.filter((c) => c.total >= 3).slice(0, 3);
+  const empty = ov.totalLeads === 0 && campaigns.length === 0;
+  // Khi có campaign nhưng chưa có lead (vd page dùng Messenger ads), vẫn hiện dữ liệu ads.
+  const worst = campaigns.filter((c) => c.total >= 1).slice(0, 5);
 
   return (
     <div className="space-y-6">
