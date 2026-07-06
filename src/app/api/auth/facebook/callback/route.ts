@@ -9,7 +9,9 @@ export async function GET(req: NextRequest) {
   const code = sp.get("code");
   const state = sp.get("state");
   const err = sp.get("error");
-  const settings = new URL("/settings", req.nextUrl.origin);
+  // Dùng appOrigin (APP_URL) chứ KHÔNG dùng req origin — sau nginx, origin là
+  // http://localhost:3000 (nội bộ container) -> redirect về sai chỗ + lỗi SSL.
+  const settings = new URL("/settings", appOrigin(req.nextUrl.origin));
 
   if (err) {
     settings.searchParams.set("error", err);
