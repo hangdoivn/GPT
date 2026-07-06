@@ -6,6 +6,7 @@ import { resolveConfig, isConnected } from "./facebook/auth";
 import { fetchLeads } from "./facebook/leads";
 import { fetchCampaigns } from "./facebook/ads";
 import { fetchPage } from "./facebook/pages";
+import { fetchConversations } from "./facebook/messenger";
 import { scoreLead } from "./scoring";
 
 export interface SyncResult {
@@ -160,10 +161,30 @@ export async function syncAll(): Promise<SyncResult> {
     }
     leadCount = leads.length;
   } catch (e) {
-    errors.push(`Lead: ${e instanceof Error ? e.message : e}`);
+    errors.push(`Lead form: ${e instanceof Error ? e.message : e}`);
   }
 
-  const base = `Đã đồng bộ ${campaignCount} chiến dịch, ${leadCount} lead (${junk} rác).`;
+  // ── Lead từ Messenger (page chạy Click-to-Messenger ads) ──
+  let msgCount = 0;
+  try {
+    const convos = await fetchConversations(cfg);
+    for (const m of convos) {
+      const r = await upsertLead(pageId, {
+        fbLeadId: `msg_${m.psid}`, // dedup theo khách
+        fullName: m.fullName,
+        phone: m.phone,
+        message: m.lastMessage,
+        source: "messenger",
+      });
+      if (r.junk) junk++;
+    }
+    msgCount = convos.length;
+    leadCount += msgCount;
+  } catch (e) {
+    errors.push(`Messenger: ${e instanceof Error ? e.message : e}`);
+  }
+
+  const base = `Đã đồng bộ ${campaignCount} chiến dịch, ${leadCount} lead (${msgCount} từ Messenger, ${junk} rác).`;
   return {
     page: pageId,
     campaigns: campaignCount,
