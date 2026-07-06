@@ -94,9 +94,11 @@ APP_PORT="$(getval APP_PORT)"
 
 if port_in_use 80 || port_in_use 443; then
   COMPOSE="docker-compose.proxy.yml"
-  # Tìm cổng nội bộ còn trống cho app.
-  if [ -z "$APP_PORT" ] || port_in_use "$APP_PORT"; then
-    APP_PORT=""
+  # CHỈ dò cổng mới khi CHƯA có APP_PORT (lần đầu). Nếu đã có, GIỮ NGUYÊN —
+  # nếu không, mỗi lần re-deploy container cũ đang giữ cổng sẽ bị coi là "bận"
+  # -> nhảy cổng khác -> lệch với nginx -> 502. (docker compose tự thay container
+  # trên cùng cổng nên không xung đột.)
+  if [ -z "$APP_PORT" ]; then
     for p in 3001 3002 3005 3010 3100 4010 8081 8090 9001; do
       if ! port_in_use "$p"; then APP_PORT="$p"; break; fi
     done
