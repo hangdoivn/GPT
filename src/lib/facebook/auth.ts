@@ -187,6 +187,47 @@ export async function completeOAuth(
   return { name, pages: pages.length };
 }
 
+/**
+ * Lấy lại page access token MỚI từ user token hiện tại (đã có đủ quyền).
+ * Fix lỗi (#10) khi page token lưu trong DB cũ/thiếu quyền: user token đã được
+ * cấp pages_read_engagement/read_insights nhưng page token cũ thì chưa.
+ * Không cần đăng nhập lại toàn bộ.
+ */
+export async function refreshPageTokens(): Promise<{ updated: number } | null> {
+  const conn = await prisma.fbConnection.findUnique({ where: { id: "singleton" } });
+  if (!conn?.userToken) return null;
+  try {
+    const res = await fbGet<{ data: FbPageEntry[] }>("me/accounts", {
+      access_token: conn.userToken,
+      fields: "id,name,category,fan_count,access_token",
+    });
+    const pages = res.data ?? [];
+    let updated = 0;
+    for (const p of pages) {
+      if (!p.access_token) continue;
+      await prisma.page.upsert({
+        where: { fbPageId: p.id },
+        create: {
+          fbPageId: p.id,
+          name: p.name,
+          category: p.category ?? null,
+          followers: p.fan_count ?? 0,
+          accessToken: p.access_token,
+        },
+        update: {
+          name: p.name,
+          followers: p.fan_count ?? 0,
+          accessToken: p.access_token, // luôn ghi đè bằng token mới
+        },
+      });
+      updated++;
+    }
+    return { updated };
+  } catch {
+    return null;
+  }
+}
+
 /** Xoá kết nối (đăng xuất khỏi Facebook trong app). */
 export async function disconnect(): Promise<void> {
   await prisma.fbConnection.deleteMany({});

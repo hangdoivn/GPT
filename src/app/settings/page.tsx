@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { Suspense } from "react";
 import { FacebookConnect } from "@/components/FacebookConnect";
 import { SyncSettings } from "@/components/SyncSettings";
+import { RefreshTokensButton } from "@/components/RefreshTokensButton";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +73,11 @@ export default async function SettingsPage() {
             <span className="text-red-500 font-medium">✗ thiếu/từ chối</span> nghĩa là token chưa có —{" "}
             <b>Ngắt kết nối rồi đăng nhập lại</b>, nhớ bật đủ page & tick tất cả quyền.
           </p>
+          <p className="text-xs text-gray-500 mb-1">
+            Nếu quyền hiện <b>✓ đã cấp</b> mà Insights vẫn báo lỗi (#10): token trang lưu trong app
+            còn cũ. Bấm nút dưới để lấy lại token trang mới từ token tài khoản — không cần đăng nhập lại.
+          </p>
+          <RefreshTokensButton />
           {perms === null ? (
             <div className="text-sm text-gray-400">Không đọc được danh sách quyền (token có thể đã hết hạn — đăng nhập lại).</div>
           ) : (
