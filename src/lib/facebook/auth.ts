@@ -4,20 +4,20 @@
 import { prisma } from "../db";
 import { getConfig, FacebookApiError, type FacebookConfig } from "./client";
 
-// Quyền cần xin khi đăng nhập. Đủ để đọc lead, ads, quản lý bài đăng.
+// Quyền cần xin khi đăng nhập. Đủ để đọc lead, ads, bài đăng & insight page.
+// Tất cả nằm trong use case "Quản lý Trang" đang ở trạng thái "Sẵn sàng thử nghiệm"
+// -> admin/tester của app dùng được ngay, KHÔNG cần App Review.
 export const OAUTH_SCOPES = [
   "pages_show_list",
-  "pages_read_engagement",
+  "pages_read_engagement", // đọc bài đăng + tương tác của page (Insights)
+  "read_insights", // số liệu page: tiếp cận/tương tác/theo dõi (biểu đồ reach/follow)
   "pages_manage_metadata", // đăng ký webhook leadgen (nhận lead realtime)
   "pages_manage_ads", // FB yêu cầu để đọc leadgen_forms/leads của page (#200)
   "pages_messaging", // đọc hội thoại Messenger (page chạy Click-to-Messenger ads)
   "leads_retrieval",
   "ads_read",
   "business_management",
-  // Đã bỏ vì Facebook trả "Invalid Scopes" cho loại app hiện tại (chặn cả login):
-  //  - "pages_manage_posts": chỉ cần cho auto-đăng bài (xin sau qua App Review).
-  //  - "read_insights": page insights (reach/follow). Mất -> trang Insights hạn chế,
-  //    NHƯNG Đánh giá tệp (new-vs-old) vẫn đủ vì dựa trên lead + campaign.
+  // "pages_manage_posts": chỉ cần cho auto-đăng bài — thêm sau khi cần đăng từ app.
 ];
 
 // Config đã phân giải: page token cho page endpoints, userToken cho Marketing API.
