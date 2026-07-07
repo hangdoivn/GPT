@@ -1,7 +1,34 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { QualityBadge, CrmBadge } from "@/components/ui";
+
+// Thứ tự chất lượng để sắp xếp: tốt > cần xác minh > rác.
+const QUALITY_ORDER: Record<string, number> = { good: 3, warm: 2, junk: 1, unscored: 0 };
+
+type ColKey = "fullName" | "phone" | "province" | "campaign" | "score" | "quality";
+interface ColSort {
+  col: ColKey;
+  dir: "asc" | "desc";
+}
+
+function compareLeads(a: Lead, b: Lead, s: ColSort): number {
+  const dir = s.dir === "asc" ? 1 : -1;
+  switch (s.col) {
+    case "score":
+      return (a.score - b.score) * dir;
+    case "quality":
+      return ((QUALITY_ORDER[a.quality] ?? 0) - (QUALITY_ORDER[b.quality] ?? 0)) * dir;
+    case "campaign":
+      return (a.campaign?.name ?? "").localeCompare(b.campaign?.name ?? "", "vi") * dir;
+    case "phone":
+      return (a.phone ?? "").localeCompare(b.phone ?? "", "vi") * dir;
+    case "province":
+      return (a.province ?? "").localeCompare(b.province ?? "", "vi") * dir;
+    default:
+      return (a.fullName ?? "").localeCompare(b.fullName ?? "", "vi") * dir;
+  }
+}
 
 interface Lead {
   id: string;
@@ -192,6 +219,20 @@ export default function LeadsPage() {
     e.target.value = "";
   }
 
+  // Sắp xếp theo cột (client-side, tức thì) khi bấm tiêu đề cột.
+  const [colSort, setColSort] = useState<ColSort | null>(null);
+  function onSortCol(col: ColKey) {
+    setColSort((prev) => {
+      if (prev?.col === col) return { col, dir: prev.dir === "asc" ? "desc" : "asc" };
+      // Mặc định: điểm/chất lượng giảm dần, chữ tăng dần.
+      return { col, dir: col === "score" || col === "quality" ? "desc" : "asc" };
+    });
+  }
+  const displayLeads = useMemo(
+    () => (colSort ? [...leads].sort((a, b) => compareLeads(a, b, colSort)) : leads),
+    [leads, colSort],
+  );
+
   const counts = {
     total: leads.length,
     junk: leads.filter((l) => l.quality === "junk").length,
@@ -271,17 +312,17 @@ export default function LeadsPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
                 <tr>
-                  <th className="text-left px-4 py-3">Khách</th>
-                  <th className="text-left px-4 py-3">SĐT</th>
-                  <th className="text-left px-4 py-3">Tỉnh</th>
-                  <th className="text-left px-4 py-3">Chiến dịch</th>
-                  <th className="text-center px-4 py-3">Điểm</th>
-                  <th className="text-left px-4 py-3">Chất lượng</th>
+                  <SortTh label="Khách" col="fullName" sort={colSort} onSort={onSortCol} />
+                  <SortTh label="SĐT" col="phone" sort={colSort} onSort={onSortCol} />
+                  <SortTh label="Tỉnh" col="province" sort={colSort} onSort={onSortCol} />
+                  <SortTh label="Chiến dịch" col="campaign" sort={colSort} onSort={onSortCol} />
+                  <SortTh label="Điểm" col="score" sort={colSort} onSort={onSortCol} align="center" />
+                  <SortTh label="Chất lượng" col="quality" sort={colSort} onSort={onSortCol} />
                   <th className="text-left px-4 py-3">Lý do / CRM</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {leads.map((l) => (
+                {displayLeads.map((l) => (
                   <LeadRow key={l.id} lead={l} onChange={load} />
                 ))}
               </tbody>
@@ -290,6 +331,31 @@ export default function LeadsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function SortTh({
+  label,
+  col,
+  sort,
+  onSort,
+  align = "left",
+}: {
+  label: string;
+  col: ColKey;
+  sort: ColSort | null;
+  onSort: (c: ColKey) => void;
+  align?: "left" | "center";
+}) {
+  const active = sort?.col === col;
+  return (
+    <th
+      className={`px-4 py-3 cursor-pointer select-none hover:text-gray-700 ${align === "center" ? "text-center" : "text-left"}`}
+      onClick={() => onSort(col)}
+      title="Bấm để sắp xếp"
+    >
+      {label} <span className={active ? "text-brand" : "text-gray-300"}>{active ? (sort!.dir === "asc" ? "↑" : "↓") : "↕"}</span>
+    </th>
   );
 }
 
