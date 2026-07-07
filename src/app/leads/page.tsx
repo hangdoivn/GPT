@@ -123,25 +123,51 @@ function ImportReportCard({ report, onClose }: { report: ImportReport; onClose: 
   );
 }
 
+const SORT_OPTIONS = [
+  { key: "date_desc", label: "Mới nhất" },
+  { key: "date_asc", label: "Cũ nhất" },
+  { key: "score_desc", label: "Uy tín cao → thấp" },
+  { key: "score_asc", label: "Điểm thấp (rác) trước" },
+];
+
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filter, setFilter] = useState("");
   const [q, setQ] = useState("");
+  const [sort, setSort] = useState("date_desc");
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importReport, setImportReport] = useState<ImportReport | null>(null);
   const [importing, setImporting] = useState(false);
+  const [rescoring, setRescoring] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (filter) params.set("quality", filter);
     if (q) params.set("q", q);
+    params.set("sort", sort);
     const res = await fetch(`/api/leads?${params}`);
     setLeads(await res.json());
     setLoading(false);
-  }, [filter, q]);
+  }, [filter, q, sort]);
+
+  async function onRescore() {
+    setRescoring(true);
+    setImportMsg(null);
+    const res = await fetch("/api/leads/rescore", { method: "POST" });
+    const data = await res.json();
+    if (res.ok) {
+      setImportMsg(
+        `Đã chấm điểm lại ${data.total} lead: ${data.dist.good} chất lượng · ${data.dist.warm} cần xác minh · ${data.dist.junk} rác.`,
+      );
+      load();
+    } else {
+      setImportMsg("Chấm điểm lại lỗi.");
+    }
+    setRescoring(false);
+  }
 
   useEffect(() => {
     load();
@@ -181,6 +207,9 @@ export default function LeadsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button className="btn-ghost" onClick={onRescore} disabled={rescoring} title="Áp dụng lại bộ luật chấm điểm mới nhất cho toàn bộ lead">
+            {rescoring ? "⏳ Đang chấm…" : "🔄 Chấm điểm lại"}
+          </button>
           <label className="btn-ghost cursor-pointer">
             {importing ? "⏳ Đang phân tích…" : "📥 Import CSV"}
             <input type="file" accept=".csv,text/csv" className="hidden" onChange={onImport} disabled={importing} />
@@ -215,6 +244,18 @@ export default function LeadsPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
+        <select
+          className="input w-auto"
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          title="Sắp xếp danh sách"
+        >
+          {SORT_OPTIONS.map((s) => (
+            <option key={s.key} value={s.key}>
+              ↕ {s.label}
+            </option>
+          ))}
+        </select>
         <div className="text-sm text-gray-500 ml-auto">
           {counts.total} lead · <span className="text-junk font-medium">{counts.junk} rác</span>
         </div>

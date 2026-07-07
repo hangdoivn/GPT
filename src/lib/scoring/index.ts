@@ -37,6 +37,23 @@ const FAKE_NAME_PATTERNS = [
   /^[^a-zA-ZÀ-ỹ]+$/, // không có chữ cái nào
 ];
 
+// Tên mặc định Facebook trả về khi khách nhắn tin mà không để lại tên thật.
+// Không có giá trị nhận diện — coi như không có tên thật.
+const PLACEHOLDER_NAME_PATTERNS = [
+  /^ngư[oờ]i dùng facebook$/i,
+  /^ngư[oờ]i dùng$/i,
+  /^\(?khách messenger\)?$/i, // fallback nội bộ khi Messenger không có tên
+  /^facebook user$/i,
+  /^fb user$/i,
+  /^khách( hàng)?$/i,
+  /^guest$/i,
+  /^user$/i,
+];
+
+function isPlaceholderName(name: string): boolean {
+  return PLACEHOLDER_NAME_PATTERNS.some((re) => re.test(name.trim()));
+}
+
 const NAME_MIN_LEN = 2;
 
 /**
@@ -64,6 +81,11 @@ export function scoreLead(input: LeadInput): ScoreResult {
   if (!name) {
     score -= 20;
     reasons.push("Không có tên");
+  } else if (isPlaceholderName(name)) {
+    // Tên mặc định Facebook ("Người dùng Facebook"): khách chưa để lại tên thật.
+    // Trừ đủ nặng để khi cũng không có SĐT thì tự rơi xuống "rác".
+    score -= 25;
+    reasons.push("Tên mặc định Facebook (khách chưa để lại tên/SĐT thật)");
   } else if (name.length < NAME_MIN_LEN) {
     score -= 15;
     reasons.push("Tên quá ngắn");

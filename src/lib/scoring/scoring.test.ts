@@ -56,6 +56,17 @@ describe("scoreLead", () => {
     expect(r.reasons.some((x) => x.includes("spam") || x.includes("giả"))).toBe(true);
   });
 
+  it("tên mặc định 'Người dùng Facebook' + không SĐT -> rác", () => {
+    const r = scoreLead({ fullName: "Người dùng Facebook", phone: null, source: "messenger" });
+    expect(r.quality).toBe("junk");
+    expect(r.reasons.some((x) => x.includes("mặc định Facebook"))).toBe(true);
+  });
+
+  it("tên mặc định nhưng CÓ SĐT thật -> không bị đánh rác oan", () => {
+    const r = scoreLead({ fullName: "Người dùng Facebook", phone: "0912883471", province: "Hà Nội" });
+    expect(r.quality).not.toBe("junk");
+  });
+
   it("classify đúng ngưỡng", () => {
     expect(classify(85)).toBe("good");
     expect(classify(55)).toBe("warm");

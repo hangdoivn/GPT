@@ -5,12 +5,22 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/leads?quality=junk&status=new&q=...
+// Các kiểu sắp xếp cho phép (whitelist để chống inject).
+const SORTS: Record<string, { [k: string]: "asc" | "desc" }> = {
+  date_desc: { createdAt: "desc" }, // mới nhất (mặc định)
+  date_asc: { createdAt: "asc" }, // cũ nhất
+  score_desc: { score: "desc" }, // uy tín cao → thấp
+  score_asc: { score: "asc" }, // rác/điểm thấp trước
+};
+
+// GET /api/leads?quality=junk&status=new&q=...&sort=score_asc
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const quality = sp.get("quality");
   const crmStatus = sp.get("status");
   const q = sp.get("q");
+  const sort = sp.get("sort") ?? "date_desc";
+  const orderBy = SORTS[sort] ?? SORTS.date_desc;
 
   const leads = await prisma.lead.findMany({
     where: {
@@ -27,7 +37,7 @@ export async function GET(req: NextRequest) {
         : {}),
     },
     include: { campaign: { select: { name: true } } },
-    orderBy: { createdAt: "desc" },
+    orderBy,
     take: 500,
   });
 
