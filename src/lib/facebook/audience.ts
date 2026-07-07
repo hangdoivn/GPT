@@ -3,7 +3,7 @@
 // còn lại để biết "ai đang xem" là breakdown của quảng cáo (người được ads tiếp cận).
 // https://developers.facebook.com/docs/marketing-api/insights/breakdowns
 
-import { graph, type FacebookConfig } from "./client";
+import { graphAll, type FacebookConfig } from "./client";
 
 export interface DemographicRow {
   label: string; // vd "25-34 · Nữ" hoặc "Hà Nội"
@@ -54,37 +54,36 @@ export async function fetchAudienceDemographics(
 
   let ageGender: DemographicRow[] = [];
   let region: DemographicRow[] = [];
-  let totalReach = 0;
+  let agTotal = 0;
+  let regTotal = 0;
 
   try {
-    const res = await graph<{ data: Array<Record<string, string | undefined>> }>(
-      `${cfg.adAccountId}/insights`,
-      {
-        token: cfg.userToken,
-        params: { fields: "reach", breakdowns: "age,gender", date_preset: "last_30d", level: "account" },
-      },
-    );
-    const { rows, total } = toRows(res.data ?? [], (r) => `${r.age ?? "?"} · ${GENDER_VI[r.gender ?? "unknown"] ?? r.gender ?? "?"}`);
+    // graphAll: duyệt hết các trang (breakdown nhiều dòng dễ vượt 1 trang -> tránh cắt cụt).
+    const rows0 = await graphAll<Record<string, string | undefined>>(`${cfg.adAccountId}/insights`, {
+      token: cfg.userToken,
+      params: { fields: "reach", breakdowns: "age,gender", date_preset: "last_30d", level: "account", limit: 200 },
+    });
+    const { rows, total } = toRows(rows0, (r) => `${r.age ?? "?"} · ${GENDER_VI[r.gender ?? "unknown"] ?? r.gender ?? "?"}`);
     ageGender = rows;
-    totalReach = total;
+    agTotal = total;
   } catch {
     /* không có dữ liệu ads theo tuổi/giới */
   }
 
   try {
-    const res = await graph<{ data: Array<Record<string, string | undefined>> }>(
-      `${cfg.adAccountId}/insights`,
-      {
-        token: cfg.userToken,
-        params: { fields: "reach", breakdowns: "region", date_preset: "last_30d", level: "account" },
-      },
-    );
-    const { rows } = toRows(res.data ?? [], (r) => r.region ?? "Không rõ");
+    const rows0 = await graphAll<Record<string, string | undefined>>(`${cfg.adAccountId}/insights`, {
+      token: cfg.userToken,
+      params: { fields: "reach", breakdowns: "region", date_preset: "last_30d", level: "account", limit: 200 },
+    });
+    const { rows, total } = toRows(rows0, (r) => r.region ?? "Không rõ");
     region = rows.slice(0, 10); // top 10 vùng
+    regTotal = total;
   } catch {
     /* không có dữ liệu ads theo vùng */
   }
 
+  // Tổng tiếp cận ước lượng: ưu tiên tổng theo tuổi/giới, fallback theo vùng.
+  const totalReach = agTotal || regTotal;
   const available = ageGender.length > 0 || region.length > 0;
   return {
     available,

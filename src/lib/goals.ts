@@ -26,19 +26,28 @@ export async function saveGoal(data: GoalData, currentFollowers: number) {
     audienceNote: data.audienceNote ?? null,
   };
 
+  // Chỉ ghi baseline khi có số follower THẬT (>0). Nếu lưu lúc chưa kết nối
+  // (currentFollowers=0) thì để trống, lần lưu sau có số thật sẽ ghi — tránh
+  // khoá baseline vào 0 làm sai tiến độ mãi mãi.
+  const haveReal = currentFollowers > 0;
+
   if (!existing) {
     return prisma.goal.create({
-      data: { id: "singleton", ...base, baselineFollowers: currentFollowers, baselineAt: new Date() },
+      data: {
+        id: "singleton",
+        ...base,
+        baselineFollowers: haveReal ? currentFollowers : null,
+        baselineAt: haveReal ? new Date() : null,
+      },
     });
   }
-  // Giữ baseline cũ (để đo tiến độ từ lúc bắt đầu); chỉ đặt baseline nếu chưa có.
+  // Ghi baseline nếu chưa có (null hoặc 0) và giờ đã có số thật.
+  const needBaseline = existing.baselineFollowers == null || existing.baselineFollowers === 0;
   return prisma.goal.update({
     where: { id: "singleton" },
     data: {
       ...base,
-      ...(existing.baselineFollowers == null
-        ? { baselineFollowers: currentFollowers, baselineAt: new Date() }
-        : {}),
+      ...(needBaseline && haveReal ? { baselineFollowers: currentFollowers, baselineAt: new Date() } : {}),
     },
   });
 }

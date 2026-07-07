@@ -82,7 +82,7 @@ export function analyzeBestTime(posts: FbPost[]): BestTime {
     }
   }
 
-  if (bestWeekday) {
+  if (bestWeekday && bestWeekday.avg > 0) {
     findings.push({
       sentiment: "good",
       title: `Đăng tốt nhất vào ${bestWeekday.label}`,
@@ -141,13 +141,41 @@ export interface GrowthSeriesLite {
 
 const round = (n: number) => Math.round(n);
 
-/** Dự phóng đạt mục tiêu từ nhịp hiện tại. */
+/**
+ * Dự phóng đạt mục tiêu từ nhịp hiện tại.
+ * `dataReal=false` (chưa có số liệu thật) -> KHÔNG bịa dự phóng từ số demo,
+ * chỉ nhắc kết nối. Tránh hiện "đã đạt mục tiêu" giả.
+ */
 export function projectGrowth(
   goal: GoalInput | null,
   currentFollowers: number,
   s: GrowthSeriesLite,
   now: number,
+  dataReal = true,
 ): GrowthProjection {
+  const hasTargets = !!goal && (!!goal.targetFollowers || !!goal.targetReachPerWeek || !!goal.targetPostsPerWeek);
+
+  if (!dataReal) {
+    return {
+      hasGoal: hasTargets,
+      currentFollowers: 0,
+      targetFollowers: goal?.targetFollowers ?? null,
+      followPerWeek: 0,
+      reachPerWeek: 0,
+      postsPerWeek: 0,
+      targetReachPerWeek: goal?.targetReachPerWeek ?? null,
+      targetPostsPerWeek: goal?.targetPostsPerWeek ?? null,
+      findings: [
+        {
+          sentiment: "info",
+          title: "Chưa có số liệu thật để dự phóng",
+          detail:
+            "Kết nối Facebook và bấm “Làm mới token trang” ở Cài đặt để app đọc follower/reach thật, rồi dự phóng theo số lượng & thời gian. Mục tiêu vẫn được lưu.",
+        },
+      ],
+    };
+  }
+
   const weeks = s.days > 0 ? s.days / 7 : 1;
   const followPerWeek = round(s.netFollows / weeks);
   const reachPerWeek = round(s.reachTotal / weeks);
@@ -173,10 +201,17 @@ export function projectGrowth(
     }
   }
 
+  // Giá trị CHÍNH XÁC cho tính toán/điều kiện; chỉ làm tròn khi hiển thị.
+  let weeksExact: number | null = null; // >0 nghĩa là chưa tới hạn (dù còn vài giờ)
   let weeksToDeadline: number | null = null;
+  let deadlinePassed = false;
   if (goal.deadline) {
     const dMs = Date.parse(goal.deadline);
-    if (!Number.isNaN(dMs)) weeksToDeadline = Math.max(0, Math.round(((dMs - now) / (7 * 86400_000)) * 10) / 10);
+    if (!Number.isNaN(dMs)) {
+      weeksExact = (dMs - now) / (7 * 86400_000);
+      deadlinePassed = dMs <= now;
+      weeksToDeadline = Math.max(0, Math.round(weeksExact * 10) / 10);
+    }
   }
 
   const out: GrowthProjection = {
@@ -200,9 +235,9 @@ export function projectGrowth(
       findings.push({ sentiment: "good", title: "Đã đạt mục tiêu follower 🎉", detail: `Hiện ${currentFollowers.toLocaleString("vi-VN")} ≥ đích ${goal.targetFollowers.toLocaleString("vi-VN")}. Đặt mục tiêu mới cao hơn.` });
       out.onTrackFollowers = true;
       out.projectedFollowers = currentFollowers;
-    } else if (weeksToDeadline != null && weeksToDeadline > 0) {
-      const projected = round(currentFollowers + effectiveFollowPerWeek * weeksToDeadline);
-      const needed = Math.ceil(gap / weeksToDeadline);
+    } else if (weeksExact != null && !deadlinePassed) {
+      const projected = round(currentFollowers + effectiveFollowPerWeek * weeksExact);
+      const needed = Math.ceil(gap / weeksExact);
       out.projectedFollowers = projected;
       out.neededFollowPerWeek = needed;
       out.onTrackFollowers = projected >= goal.targetFollowers;
@@ -211,7 +246,7 @@ export function projectGrowth(
       } else {
         findings.push({ sentiment: "bad", title: `Chậm tiến độ: cần +${needed.toLocaleString("vi-VN")} follower/tuần`, detail: `Nhịp hiện tại chỉ +${effectiveFollowPerWeek}/tuần → dự phóng ~${projected.toLocaleString("vi-VN")}, thiếu so với đích ${goal.targetFollowers.toLocaleString("vi-VN")}. Tăng nhịp đăng, đẩy bài lan toả, hoặc chạy ads đúng tệp.` });
       }
-    } else if (weeksToDeadline === 0) {
+    } else if (deadlinePassed) {
       findings.push({ sentiment: "warn", title: "Đã tới hạn mục tiêu", detail: `Còn thiếu ${gap.toLocaleString("vi-VN")} follower. Đặt lại hạn mới hoặc điều chỉnh đích.` });
     } else {
       const wkNeeded = effectiveFollowPerWeek > 0 ? Math.ceil(gap / effectiveFollowPerWeek) : null;

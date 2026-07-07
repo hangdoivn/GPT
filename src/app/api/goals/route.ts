@@ -15,7 +15,13 @@ const schema = z.object({
   targetFollowers: z.number().int().positive().nullable().optional(),
   targetReachPerWeek: z.number().int().positive().nullable().optional(),
   targetPostsPerWeek: z.number().int().positive().nullable().optional(),
-  deadline: z.string().nullable().optional(),
+  // Hạn: chấp nhận null/rỗng, hoặc chuỗi ngày HỢP LỆ (chặn "31/12/2026" -> Invalid Date -> 500).
+  deadline: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((s) => (s && s.trim() ? s.trim() : null))
+    .refine((s) => s === null || !Number.isNaN(Date.parse(s)), { message: "Ngày không hợp lệ" }),
   audienceNote: z.string().max(300).nullable().optional(),
 });
 

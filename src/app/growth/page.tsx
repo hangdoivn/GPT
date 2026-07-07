@@ -28,7 +28,8 @@ interface GrowthData {
   connected: boolean;
   postsSource: "facebook" | "demo";
   pageSource: "facebook" | "demo";
-  followers: number;
+  real: { insights: boolean; posts: boolean };
+  followers: number | null;
   bestTime: {
     hasData: boolean;
     byWeekday: WeekdayStat[];
@@ -90,6 +91,8 @@ export default function GrowthPage() {
   if (!data) return <div className="text-junk">Không tải được dữ liệu.</div>;
 
   const p = data.projection;
+  const ri = data.real.insights; // có số reach/follow thật
+  const rp = data.real.posts; // có bài đăng thật
 
   return (
     <div className="space-y-5">
@@ -98,20 +101,27 @@ export default function GrowthPage() {
           <h1 className="text-2xl font-bold">Mục tiêu & Tăng trưởng</h1>
           <p className="text-sm text-gray-500">Đặt đích xây tệp đúng, theo dõi follower/reach theo số lượng & thời gian.</p>
         </div>
-        <span className={`badge ${data.pageSource === "facebook" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-          {data.pageSource === "facebook" ? "● Số liệu thật" : "○ Số minh hoạ"}
+        <span className={`badge ${ri ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+          {ri ? "● Số liệu thật" : "○ Chưa có số thật"}
         </span>
       </div>
+
+      {!ri && (
+        <div className="card p-3 text-sm text-amber-800 bg-amber-50 border-l-4 border-l-warm">
+          ⚠️ Chưa đọc được số liệu thật của page (reach/follow). Vào <b>Cài đặt → “🔄 Làm mới token trang”</b> rồi
+          quay lại — follower, nhịp tăng, dự phóng sẽ hiện số thật. Mục tiêu bạn đặt vẫn được lưu.
+        </div>
+      )}
 
       {/* Mục tiêu + dự phóng */}
       <GoalCard data={data} onSaved={load} />
 
       {/* Thẻ nhịp tăng trưởng */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="Follower hiện tại" value={fmt(data.followers)} />
-        <Stat label="Follow ròng/tuần" value={`${p.followPerWeek >= 0 ? "+" : ""}${fmt(p.followPerWeek)}`} tone={p.followPerWeek > 0 ? "good" : p.followPerWeek < 0 ? "bad" : "default"} />
-        <Stat label="Reach/tuần" value={fmt(p.reachPerWeek)} />
-        <Stat label="Nhịp đăng" value={`${p.postsPerWeek} bài/tuần`} tone={p.postsPerWeek >= 3 ? "good" : "warn"} />
+        <Stat label="Follower hiện tại" value={ri && data.followers != null ? fmt(data.followers) : "—"} />
+        <Stat label="Follow ròng/tuần" value={ri ? `${p.followPerWeek >= 0 ? "+" : ""}${fmt(p.followPerWeek)}` : "—"} tone={ri ? (p.followPerWeek > 0 ? "good" : p.followPerWeek < 0 ? "bad" : "default") : "default"} />
+        <Stat label="Reach/tuần" value={ri ? fmt(p.reachPerWeek) : "—"} />
+        <Stat label="Nhịp đăng" value={rp ? `${p.postsPerWeek} bài/tuần` : "—"} tone={rp && p.postsPerWeek >= 3 ? "good" : rp ? "warn" : "default"} />
       </div>
 
       {/* Nhận định dự phóng mục tiêu */}
@@ -224,9 +234,10 @@ function GoalCard({ data, onSaved }: { data: GrowthData; onSaved: () => void }) 
     );
   }
 
-  // Hiển thị mục tiêu + tiến độ.
+  // Hiển thị mục tiêu + tiến độ. Chỉ tính % khi có follower THẬT.
+  const ri = data.real.insights;
   const pct =
-    g?.targetFollowers && g.targetFollowers > 0
+    ri && data.followers != null && g?.targetFollowers && g.targetFollowers > 0
       ? Math.min(100, Math.round((data.followers / g.targetFollowers) * 100))
       : null;
 
@@ -243,7 +254,7 @@ function GoalCard({ data, onSaved }: { data: GrowthData; onSaved: () => void }) 
       {pct !== null && (
         <div className="mt-4">
           <div className="flex justify-between text-sm mb-1">
-            <span className="text-gray-600">{fmt(data.followers)} / {fmt(g!.targetFollowers!)} follower</span>
+            <span className="text-gray-600">{fmt(data.followers!)} / {fmt(g!.targetFollowers!)} follower</span>
             <span className={`font-semibold ${p.onTrackFollowers ? "text-good" : "text-warm"}`}>{pct}%</span>
           </div>
           <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
@@ -257,7 +268,13 @@ function GoalCard({ data, onSaved }: { data: GrowthData; onSaved: () => void }) 
           </div>
         </div>
       )}
-      {pct === null && <p className="text-sm text-gray-500 mt-2">Chưa đặt đích follower. Bấm Sửa để đặt mục tiêu.</p>}
+      {pct === null && (
+        <p className="text-sm text-gray-500 mt-2">
+          {g?.targetFollowers
+            ? `Đích ${fmt(g.targetFollowers)} follower — kết nối & “Làm mới token trang” để xem tiến độ thật.`
+            : "Chưa đặt đích follower. Bấm Sửa để đặt mục tiêu."}
+        </p>
+      )}
     </div>
   );
 }

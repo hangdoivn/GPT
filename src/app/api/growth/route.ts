@@ -29,7 +29,22 @@ export async function GET() {
     }
   }
   if (!rawPosts) rawPosts = demoPosts();
-  const bestTime = analyzeBestTime(rawPosts);
+  const realPosts = postsSource === "facebook";
+  // Chỉ phân tích thời điểm đăng từ bài THẬT — không bịa từ bài demo.
+  const bestTime = realPosts
+    ? analyzeBestTime(rawPosts)
+    : {
+        hasData: false,
+        byWeekday: [],
+        byHour: [],
+        findings: [
+          {
+            sentiment: "info" as const,
+            title: "Chưa có bài đăng thật",
+            detail: "Kết nối Facebook + bấm “Làm mới token trang” để phân tích thời điểm đăng tốt nhất từ bài thật.",
+          },
+        ],
+      };
 
   // Page insights (reach/follow) — cần read_insights.
   let pageData = null;
@@ -46,14 +61,17 @@ export async function GET() {
     }
   }
   if (!pageData) pageData = demoInsights();
+  const realInsights = pageSource === "facebook";
 
   const netFollows = pageData.series.reduce((s, d) => s + (d.follows - d.unfollows), 0);
   const reachTotal = pageData.series.reduce((s, d) => s + d.reach, 0);
+  // Nhịp đăng dùng số bài THẬT trên khung THẬT; nếu thiếu -> 0 (không trộn demo).
+  const realPostCount = realPosts ? bestTime.byWeekday.reduce((s, w) => s + w.posts, 0) : 0;
   const seriesLite: GrowthSeriesLite = {
     days: pageData.series.length || 28,
     netFollows,
     reachTotal,
-    posts: postsSource === "facebook" ? bestTime.byWeekday.reduce((s, w) => s + w.posts, 0) : rawPosts.length,
+    posts: realPostCount,
   };
 
   // Nhân khẩu người xem (từ ads breakdown).
@@ -82,13 +100,15 @@ export async function GET() {
     pageData.fans,
     seriesLite,
     Date.now(),
+    realInsights, // dataReal: chỉ dự phóng khi có số liệu thật
   );
 
   return NextResponse.json({
     connected,
     postsSource,
     pageSource,
-    followers: pageData.fans,
+    real: { insights: realInsights, posts: realPosts },
+    followers: realInsights ? pageData.fans : null,
     series: pageData.series,
     bestTime,
     demographics,
