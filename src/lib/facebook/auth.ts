@@ -237,6 +237,38 @@ export async function isConnected(): Promise<boolean> {
   return Boolean(cfg.pageAccessToken && cfg.pageId);
 }
 
+export interface PermissionState {
+  permission: string;
+  status: "granted" | "declined" | "missing";
+}
+
+/**
+ * Đọc danh sách quyền user đã cấp cho app (/me/permissions).
+ * Dùng để chẩn đoán vì sao endpoint page bị (#10): quyền chưa granted trong token.
+ * Trả về đủ OAUTH_SCOPES, kèm trạng thái granted/declined/missing.
+ */
+export async function fetchGrantedPermissions(): Promise<PermissionState[] | null> {
+  const conn = await prisma.fbConnection.findUnique({ where: { id: "singleton" } });
+  const token = conn?.userToken;
+  if (!token) return null;
+  try {
+    const json = await fbGet<{ data: { permission: string; status: string }[] }>("me/permissions", {
+      access_token: token,
+    });
+    const byName = new Map<string, string>();
+    for (const p of json.data ?? []) byName.set(p.permission, p.status);
+    return OAUTH_SCOPES.map((permission) => {
+      const status = byName.get(permission);
+      return {
+        permission,
+        status: status === "granted" ? "granted" : status === "declined" ? "declined" : "missing",
+      } as PermissionState;
+    });
+  } catch {
+    return null;
+  }
+}
+
 /** App credentials (appId/secret) đã cấu hình chưa — điều kiện để chạy OAuth. */
 export function hasAppCredentials(): boolean {
   const c = getConfig();

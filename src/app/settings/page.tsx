@@ -1,5 +1,5 @@
 import { getConfig } from "@/lib/facebook/client";
-import { resolveConfig, isConnected } from "@/lib/facebook/auth";
+import { resolveConfig, isConnected, fetchGrantedPermissions } from "@/lib/facebook/auth";
 import { prisma } from "@/lib/db";
 import { Suspense } from "react";
 import { FacebookConnect } from "@/components/FacebookConnect";
@@ -7,14 +7,28 @@ import { SyncSettings } from "@/components/SyncSettings";
 
 export const dynamic = "force-dynamic";
 
+// Giải thích ngắn từng quyền để người dùng biết thiếu quyền nào thì mất tính năng gì.
+const PERMISSION_INFO: Record<string, string> = {
+  pages_show_list: "Liệt kê page bạn quản lý",
+  pages_read_engagement: "Đọc bài đăng + tương tác (Insights)",
+  read_insights: "Biểu đồ tiếp cận/theo dõi (Insights)",
+  pages_manage_metadata: "Webhook nhận lead realtime",
+  pages_manage_ads: "Đọc lead form của page",
+  pages_messaging: "Đọc hội thoại Messenger",
+  leads_retrieval: "Kéo lead từ Lead Ads",
+  ads_read: "Số liệu chiến dịch quảng cáo",
+  business_management: "Truy cập ad account trong Business",
+};
+
 export default async function SettingsPage() {
   const cfg = await resolveConfig();
   const env = getConfig();
-  const [connected, pages, leads, campaigns] = await Promise.all([
+  const [connected, pages, leads, campaigns, perms] = await Promise.all([
     isConnected(),
     prisma.page.count(),
     prisma.lead.count(),
     prisma.campaign.count(),
+    fetchGrantedPermissions(),
   ]);
 
   return (
@@ -49,6 +63,34 @@ export default async function SettingsPage() {
           <code>.env</code>. Token của page & ad account được lấy tự động qua đăng nhập ở trên.
         </p>
       </div>
+
+      {connected && (
+        <div className="card p-5">
+          <h2 className="font-semibold mb-1">Quyền Facebook đã cấp</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            Chẩn đoán vì sao một số tính năng còn hiển thị số minh hoạ. Quyền{" "}
+            <span className="text-red-500 font-medium">✗ thiếu/từ chối</span> nghĩa là token chưa có —{" "}
+            <b>Ngắt kết nối rồi đăng nhập lại</b>, nhớ bật đủ page & tick tất cả quyền.
+          </p>
+          {perms === null ? (
+            <div className="text-sm text-gray-400">Không đọc được danh sách quyền (token có thể đã hết hạn — đăng nhập lại).</div>
+          ) : (
+            <div className="space-y-1">
+              {perms.map((p) => (
+                <div key={p.permission} className="flex items-center justify-between text-sm border-b border-gray-50 py-1.5">
+                  <div>
+                    <span className="font-mono text-xs">{p.permission}</span>
+                    <span className="text-gray-400 text-xs ml-2">{PERMISSION_INFO[p.permission] ?? ""}</span>
+                  </div>
+                  <span className={`text-xs font-medium ${p.status === "granted" ? "text-good" : "text-junk"}`}>
+                    {p.status === "granted" ? "✓ đã cấp" : p.status === "declined" ? "✗ bị từ chối" : "✗ thiếu"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="card p-5">
         <h2 className="font-semibold mb-3">Dữ liệu hiện có</h2>
