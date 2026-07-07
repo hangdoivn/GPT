@@ -21,6 +21,19 @@ model FbConnection {
   updatedAt          DateTime  @updatedAt
 }
 
+// ─── Mục tiêu xây page (số follower/reach + tệp mục tiêu) — singleton ──
+model Goal {
+  id                 String    @id @default("singleton")
+  targetFollowers    Int? // đích số follower
+  targetReachPerWeek Int? // đích reach mỗi tuần
+  targetPostsPerWeek Int? // đích số bài/tuần
+  deadline           DateTime? // hạn đạt mục tiêu
+  audienceNote       String? // mô tả tệp mục tiêu (vd "chủ nhà hàng/quán F&B Đà Nẵng")
+  baselineFollowers  Int? // follower lúc đặt mục tiêu (đo tiến độ)
+  baselineAt         DateTime? // thời điểm đặt mục tiêu
+  updatedAt          DateTime  @updatedAt
+}
+
 // ─── Cấu hình đồng bộ định kỳ — bản ghi đơn (singleton) ────────
 model SyncConfig {
   id              String    @id @default("singleton")
