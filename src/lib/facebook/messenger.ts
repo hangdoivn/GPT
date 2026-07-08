@@ -12,7 +12,18 @@ export interface MessengerLead {
   phone?: string; // SĐT tách được từ tin nhắn khách
   lastMessage?: string;
   updatedTime: string;
+  // ── Tín hiệu phát hiện nick ảo ──
+  customerMsgCount: number; // số tin khách gửi
+  pageReplied: boolean; // page đã trả lời chưa
+  repliedAfterPage: boolean; // khách có nhắn tiếp sau khi page trả lời (người thật hay tiếp)
+  customerChars: number; // tổng độ dài text khách
+  customerText: string; // text khách (chuẩn hoá) để soi trùng
+  firstMsgTime: string; // ISO thời điểm tin đầu (soi dồn thời gian)
+  nameResolved: boolean; // tên có phân giải thật (không phải placeholder)
 }
+
+// Tên placeholder Facebook trả khi không phân giải được (thường nick ảo/khoá).
+const PLACEHOLDER_NAME_RE = /^(ngư[oờ]i dùng facebook|\(?khách messenger\)?|facebook user)$/i;
 
 interface RawParticipant {
   id: string;
@@ -70,18 +81,35 @@ export async function fetchConversations(
     if (!customer) continue;
 
     const msgs = c.messages?.data ?? [];
-    const customerText = msgs
-      .filter((m) => m.from?.id && m.from.id !== cfg.pageId)
-      .map((m) => m.message ?? "")
-      .join(" ");
+    const custMsgs = msgs.filter((m) => m.from?.id && m.from.id !== cfg.pageId);
+    const pageMsgs = msgs.filter((m) => m.from?.id === cfg.pageId);
+    const customerText = custMsgs.map((m) => m.message ?? "").join(" ");
+
+    const ts = (m: RawMessage) => Date.parse(m.created_time ?? "");
+    const allTimes = msgs.map(ts).filter((n) => !Number.isNaN(n));
+    const firstMsgMs = allTimes.length ? Math.min(...allTimes) : NaN;
+    const pageTimes = pageMsgs.map(ts).filter((n) => !Number.isNaN(n));
+    const firstPageMs = pageTimes.length ? Math.min(...pageTimes) : NaN;
+    const repliedAfterPage =
+      !Number.isNaN(firstPageMs) && custMsgs.some((m) => { const t = ts(m); return !Number.isNaN(t) && t > firstPageMs; });
+
+    const rawName = customer.name?.trim() ?? "";
+    const nameResolved = rawName.length > 0 && !PLACEHOLDER_NAME_RE.test(rawName);
 
     out.push({
       conversationId: c.id,
       psid: customer.id,
-      fullName: customer.name?.trim() || "(khách Messenger)",
+      fullName: rawName || "(khách Messenger)",
       phone: extractPhone(customerText),
       lastMessage: msgs[0]?.message,
       updatedTime: c.updated_time ?? "",
+      customerMsgCount: custMsgs.length,
+      pageReplied: pageMsgs.length > 0,
+      repliedAfterPage,
+      customerChars: customerText.trim().length,
+      customerText: customerText.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 120),
+      firstMsgTime: Number.isNaN(firstMsgMs) ? (c.updated_time ?? "") : new Date(firstMsgMs).toISOString(),
+      nameResolved,
     });
   }
   return out;

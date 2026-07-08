@@ -7,6 +7,7 @@ const NAV = [
   { href: "/", label: "Tổng quan", icon: "📊" },
   { href: "/marcom", label: "Cố vấn MarCom", icon: "🧠" },
   { href: "/leads", label: "Lead & Lọc rác", icon: "🎯" },
+  { href: "/fake-leads", label: "Phát hiện lead ảo", icon: "🕵️" },
   { href: "/ads", label: "Chiến dịch Ads", icon: "📈" },
   { href: "/insights", label: "Insights Page", icon: "🔎" },
   { href: "/growth", label: "Mục tiêu & Tăng trưởng", icon: "🚀" },
