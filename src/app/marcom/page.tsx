@@ -22,6 +22,16 @@ interface Data {
   goal: { targetFollowers?: number | null; deadline?: string | null; audienceNote?: string | null; icpMonthlyMinVnd?: number | null; icpNote?: string | null } | null;
   icpMinVnd: number;
   premiumFit: PremiumFit;
+  forecast: {
+    confidence: "low" | "medium" | "high";
+    monthlyLeads: number;
+    monthlyMessenger: number;
+    monthlyQualified: number;
+    monthlyWon: number;
+    basisDays: number;
+    assumptions: string[];
+    findings: Finding[];
+  };
   plan: { headline: { status: string; focus: string }; recommendedPostsPerWeek: number; tasks: OpTask[] };
   pillars: { pillars: PillarStat[]; findings: Finding[] };
   funnel: { stages: FunnelStage[]; conversions: FunnelConv[]; weakest?: FunnelConv; findings: Finding[] };
@@ -92,6 +102,9 @@ export default function MarcomPage() {
           </div>
         </div>
       </div>
+
+      {/* Dự báo tháng tới */}
+      <ForecastCard f={data.forecast} />
 
       {/* Đánh giá tệp cao cấp (ICP) */}
       <PremiumFitCard data={data} onSaved={load} />
@@ -208,6 +221,46 @@ export default function MarcomPage() {
           <div className="px-5 py-2 text-xs text-gray-400">CPQL = chi phí trên mỗi lead chất lượng (loại rác) — con số đáng theo dõi nhất cho hiệu quả thật.</div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ForecastCard({ f }: { f: Data["forecast"] }) {
+  const conf: Record<string, { cls: string; label: string }> = {
+    low: { cls: "bg-amber-100 text-amber-700", label: "Tin cậy thấp" },
+    medium: { cls: "bg-blue-100 text-blue-700", label: "Tin cậy vừa" },
+    high: { cls: "bg-green-100 text-green-700", label: "Tin cậy cao" },
+  };
+  const c = conf[f.confidence] ?? conf.medium;
+  return (
+    <div className="card p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-semibold">📈 Dự báo tháng tới</h2>
+        <span className={`badge ${c.cls}`}>● {c.label}</span>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <BigStat label="Inbox Messenger" value={fmt(f.monthlyMessenger)} sub="/tháng" tone="brand" />
+        <BigStat label="Tổng lead" value={fmt(f.monthlyLeads)} sub="/tháng" />
+        <BigStat label="Lead chất lượng" value={fmt(f.monthlyQualified)} sub="/tháng" tone="good" />
+        <BigStat label="Chốt đơn" value={fmt(f.monthlyWon)} sub="/tháng" tone="good" />
+      </div>
+      <div className="mt-3">
+        <FindingList items={f.findings} />
+      </div>
+      <ul className="text-xs text-gray-400 mt-3 space-y-0.5 list-disc pl-4">
+        {f.assumptions.map((a, i) => <li key={i}>{a}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+function BigStat({ label, value, sub, tone = "default" }: { label: string; value: string; sub?: string; tone?: "default" | "brand" | "good" }) {
+  const toneCls = { default: "text-gray-900", brand: "text-brand", good: "text-good" }[tone];
+  return (
+    <div className="bg-gray-50 rounded-lg p-3 text-center">
+      <div className="text-xs font-medium text-gray-500">{label}</div>
+      <div className={`text-2xl font-bold mt-0.5 ${toneCls}`}>{value}</div>
+      {sub && <div className="text-[11px] text-gray-400">{sub}</div>}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { getCampaignQuality } from "@/lib/analytics";
 import { getAudienceBuckets } from "@/lib/audience-buckets";
 import { analyzePillars, analyzeFunnel, buildOperatingPlan } from "@/lib/marcom";
 import { analyzePremiumFit, scanContentSignal } from "@/lib/premium-fit";
+import { forecastMonthly } from "@/lib/forecast";
 import { demoInsights, demoPosts } from "@/lib/demo-insights";
 
 export const dynamic = "force-dynamic";
@@ -84,6 +85,36 @@ export async function GET() {
     prisma.lead.count({ where: { crmStatus: "won" } }),
     prisma.lead.count({ where: { crmStatus: "new" } }),
   ]);
+
+  // ── Dự báo tháng tới (nhịp lead 28 ngày × tỉ lệ chốt lịch sử) ──
+  const WINDOW_DAYS = 28;
+  const since = new Date(Date.now() - WINDOW_DAYS * 86400_000);
+  const leadsWin = await prisma.lead.findMany({
+    where: { createdAt: { gte: since } },
+    select: { createdAt: true, source: true },
+  });
+  const messengerInWindow = leadsWin.filter((l) => l.source === "messenger").length;
+  let spanDays = 0;
+  let firstDate: string | null = null;
+  let lastDate: string | null = null;
+  if (leadsWin.length > 0) {
+    const times = leadsWin.map((l) => l.createdAt.getTime());
+    const min = Math.min(...times);
+    const max = Math.max(...times);
+    spanDays = Math.max(0, Math.round((max - min) / 86400_000));
+    firstDate = new Date(min).toISOString().slice(0, 10);
+    lastDate = new Date(max).toISOString().slice(0, 10);
+  }
+  const forecast = forecastMonthly({
+    leadsInWindow: leadsWin.length,
+    messengerInWindow,
+    spanDays,
+    windowDays: WINDOW_DAYS,
+    firstDate,
+    lastDate,
+    qualifiedRate: totalLeads ? qualified / totalLeads : 0,
+    wonRate: totalLeads ? won / totalLeads : 0,
+  });
 
   const funnel = analyzeFunnel({
     reachPerWeek: realInsights ? Math.round(reachTotal / weeks) : null,
@@ -161,6 +192,7 @@ export async function GET() {
       : null,
     icpMinVnd,
     premiumFit,
+    forecast,
     plan,
     pillars,
     funnel,
