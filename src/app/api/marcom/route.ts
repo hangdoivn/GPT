@@ -6,7 +6,9 @@ import { fetchPosts } from "@/lib/facebook/pages";
 import { analyzeBestTime, projectGrowth, type GrowthSeriesLite } from "@/lib/growth-analysis";
 import { getGoal } from "@/lib/goals";
 import { getCampaignQuality } from "@/lib/analytics";
+import { getAudienceBuckets } from "@/lib/audience-buckets";
 import { analyzePillars, analyzeFunnel, buildOperatingPlan } from "@/lib/marcom";
+import { analyzePremiumFit, scanContentSignal } from "@/lib/premium-fit";
 import { demoInsights, demoPosts } from "@/lib/demo-insights";
 
 export const dynamic = "force-dynamic";
@@ -112,6 +114,25 @@ export async function GET() {
   }
   unitEconomics.sort((a, b) => b.spend - a.spend);
 
+  // ── Đánh giá phù hợp tệp cao cấp (ICP >25tr/tháng) ──
+  const buckets = await getAudienceBuckets();
+  const coreJunk = buckets.filter((b) => b.bucket === "core");
+  const broad = buckets.find((b) => b.bucket === "broad");
+  const l2q = funnel.conversions.find((c) => c.to === "qualified");
+  const q2w = funnel.conversions.find((c) => c.to === "won");
+  const icpMinVnd = goal?.icpMonthlyMinVnd ?? 25_000_000;
+  const premiumFit = analyzePremiumFit({
+    icpMinVnd,
+    icpNote: goal?.icpNote ?? goal?.audienceNote ?? null,
+    pillars,
+    signal: realPosts ? scanContentSignal(rawPosts.map((p) => p.message ?? "")) : { discountDensity: 0, premiumDensity: 0 },
+    coreJunkRate: coreJunk.length ? Math.min(...coreJunk.map((b) => b.junkRate)) : null,
+    broadJunkRate: broad ? broad.junkRate : null,
+    leadToQualified: l2q ? l2q.rate : null,
+    qualifiedToWon: q2w ? q2w.rate : null,
+    hasData: (realPosts && pillars.pillars.length > 0) || totalLeads > 0,
+  });
+
   // ── Kế hoạch vận hành ──
   const plan = buildOperatingPlan({
     goal: goal
@@ -136,8 +157,10 @@ export async function GET() {
     connected,
     real: { insights: realInsights, posts: realPosts },
     goal: goal
-      ? { targetFollowers: goal.targetFollowers, targetReachPerWeek: goal.targetReachPerWeek, deadline: goal.deadline ? goal.deadline.toISOString().slice(0, 10) : null, audienceNote: goal.audienceNote }
+      ? { targetFollowers: goal.targetFollowers, targetReachPerWeek: goal.targetReachPerWeek, deadline: goal.deadline ? goal.deadline.toISOString().slice(0, 10) : null, audienceNote: goal.audienceNote, icpMonthlyMinVnd: goal.icpMonthlyMinVnd, icpNote: goal.icpNote }
       : null,
+    icpMinVnd,
+    premiumFit,
     plan,
     pillars,
     funnel,

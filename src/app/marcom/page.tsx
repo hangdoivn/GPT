@@ -8,10 +8,20 @@ interface PillarStat { key: string; label: string; posts: number; avg: number; s
 interface FunnelStage { key: string; label: string; value: number }
 interface FunnelConv { from: string; to: string; rate: number; label: string }
 interface UnitEcon { name: string; spend: number; leads: number; qualified: number; won: number; cpl: number; cpql: number; cpw: number; junkRate: number }
+interface PremiumFit {
+  score: number;
+  band: "aligned" | "mixed" | "mass";
+  verdict: string;
+  pillars: { positioning: number; valueSignal: number; targeting: number; leadQuality: number };
+  findings: Finding[];
+  shifts: OpTask[];
+}
 interface Data {
   connected: boolean;
   real: { insights: boolean; posts: boolean };
-  goal: { targetFollowers?: number | null; deadline?: string | null; audienceNote?: string | null } | null;
+  goal: { targetFollowers?: number | null; deadline?: string | null; audienceNote?: string | null; icpMonthlyMinVnd?: number | null; icpNote?: string | null } | null;
+  icpMinVnd: number;
+  premiumFit: PremiumFit;
   plan: { headline: { status: string; focus: string }; recommendedPostsPerWeek: number; tasks: OpTask[] };
   pillars: { pillars: PillarStat[]; findings: Finding[] };
   funnel: { stages: FunnelStage[]; conversions: FunnelConv[]; weakest?: FunnelConv; findings: Finding[] };
@@ -42,12 +52,19 @@ const STATUS: Record<string, { cls: string; label: string }> = {
 const fmt = (n: number) => n.toLocaleString("vi-VN");
 const fmtVnd = (n: number) => (n > 0 ? `${fmt(n)}đ` : "—");
 
+const BAND: Record<string, { cls: string; ring: string; label: string }> = {
+  aligned: { cls: "text-good", ring: "border-good", label: "Đúng tệp cao cấp" },
+  mixed: { cls: "text-warm", ring: "border-warm", label: "Hỗn hợp" },
+  mass: { cls: "text-junk", ring: "border-junk", label: "Lệch tệp giá rẻ" },
+};
+
 export default function MarcomPage() {
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
+  function load() {
     fetch("/api/marcom").then((r) => r.json()).then(setData).finally(() => setLoading(false));
-  }, []);
+  }
+  useEffect(() => load(), []);
 
   if (loading) return <div className="text-gray-400">Cố vấn đang phân tích…</div>;
   if (!data) return <div className="text-junk">Không tải được dữ liệu.</div>;
@@ -75,6 +92,9 @@ export default function MarcomPage() {
           </div>
         </div>
       </div>
+
+      {/* Đánh giá tệp cao cấp (ICP) */}
+      <PremiumFitCard data={data} onSaved={load} />
 
       {/* Kế hoạch giao việc */}
       <div className="card p-4">
@@ -186,6 +206,116 @@ export default function MarcomPage() {
             </table>
           </div>
           <div className="px-5 py-2 text-xs text-gray-400">CPQL = chi phí trên mỗi lead chất lượng (loại rác) — con số đáng theo dõi nhất cho hiệu quả thật.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PremiumFitCard({ data, onSaved }: { data: Data; onSaved: () => void }) {
+  const pf = data.premiumFit;
+  const b = BAND[pf.band] ?? BAND.mixed;
+  const trM = Math.round((data.goal?.icpMonthlyMinVnd ?? data.icpMinVnd) / 1_000_000);
+  const [edit, setEdit] = useState(false);
+  const [minTr, setMinTr] = useState(String(trM));
+  const [note, setNote] = useState(data.goal?.icpNote ?? "");
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    setBusy(true);
+    await fetch("/api/goals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        icpMonthlyMinVnd: minTr.trim() ? parseInt(minTr, 10) * 1_000_000 : null,
+        icpNote: note.trim() || null,
+      }),
+    });
+    setBusy(false);
+    setEdit(false);
+    onSaved();
+  }
+
+  const PILLAR_LABELS: [keyof PremiumFit["pillars"], string][] = [
+    ["positioning", "Định vị nội dung"],
+    ["valueSignal", "Tín hiệu giá trị"],
+    ["targeting", "Chất lượng nhắm"],
+    ["leadQuality", "Chất lượng lead"],
+  ];
+
+  return (
+    <div className={`card p-5 border-l-4 ${b.ring.replace("border-", "border-l-")}`}>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="font-semibold">💎 Đánh giá phù hợp tệp khách cao cấp</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Tệp mục tiêu: <b>doanh nghiệp doanh thu &gt; {trM}tr/tháng</b>
+            {data.goal?.icpNote ? ` · ${data.goal.icpNote}` : ""}
+          </p>
+        </div>
+        <button className="btn-ghost text-sm" onClick={() => setEdit((v) => !v)}>⚙️ Sửa tệp</button>
+      </div>
+
+      {edit && (
+        <div className="mt-3 grid md:grid-cols-3 gap-3 items-end bg-gray-50 rounded-lg p-3">
+          <div>
+            <label className="label">Doanh thu tối thiểu (triệu/tháng)</label>
+            <input className="input" inputMode="numeric" value={minTr} onChange={(e) => setMinTr(e.target.value.replace(/[^\d]/g, ""))} placeholder="25" />
+          </div>
+          <div className="md:col-span-2">
+            <label className="label">Mô tả tệp cao cấp</label>
+            <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="vd: chuỗi nhà hàng/hotel F&B, chủ đầu tư thương hiệu" />
+          </div>
+          <div className="md:col-span-3">
+            <button className="btn-primary" onClick={save} disabled={busy}>{busy ? "Đang lưu…" : "Lưu & đánh giá lại"}</button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-5 mt-4 flex-wrap">
+        <div className={`w-24 h-24 rounded-full border-4 ${b.ring} flex flex-col items-center justify-center shrink-0`}>
+          <div className={`text-2xl font-bold ${b.cls}`}>{pf.score}</div>
+          <div className="text-[10px] text-gray-400">/100</div>
+        </div>
+        <div className="flex-1 min-w-[200px]">
+          <div className={`font-semibold ${b.cls}`}>● {b.label}</div>
+          <p className="text-sm text-gray-600 mt-1">{pf.verdict}</p>
+        </div>
+      </div>
+
+      {/* 4 trụ */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+        {PILLAR_LABELS.map(([k, label]) => {
+          const v = pf.pillars[k];
+          const tone = v >= 60 ? "bg-good" : v >= 45 ? "bg-warm" : "bg-junk";
+          return (
+            <div key={k}>
+              <div className="flex justify-between text-xs mb-1"><span className="text-gray-600">{label}</span><span className="font-semibold">{v}</span></div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden"><div className={`h-full rounded-full ${tone}`} style={{ width: `${v}%` }} /></div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Đầu việc dịch chuyển về tệp cao cấp */}
+      {pf.shifts.length > 0 && (
+        <div className="mt-4">
+          <div className="text-xs font-semibold text-gray-500 uppercase mb-2">Dịch chuyển về tệp cao cấp</div>
+          <div className="space-y-2">
+            {pf.shifts.map((t, i) => {
+              const a = AREA[t.area] ?? AREA.Content;
+              return (
+                <div key={i} className="border border-gray-100 rounded-lg p-3">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className={`badge ${a.cls}`}>{a.icon} {t.area}</span>
+                    <span className={`badge ${PRIO[t.priority]}`}>Ưu tiên {t.priority}</span>
+                  </div>
+                  <div className="font-medium text-sm">{t.title}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">↳ {t.why}</div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

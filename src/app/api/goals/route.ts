@@ -23,6 +23,8 @@ const schema = z.object({
     .transform((s) => (s && s.trim() ? s.trim() : null))
     .refine((s) => s === null || !Number.isNaN(Date.parse(s)), { message: "Ngày không hợp lệ" }),
   audienceNote: z.string().max(300).nullable().optional(),
+  icpMonthlyMinVnd: z.number().int().positive().nullable().optional(),
+  icpNote: z.string().max(300).nullable().optional(),
 });
 
 // POST /api/goals — lưu mục tiêu xây page.

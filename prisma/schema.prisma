@@ -29,6 +29,8 @@ model Goal {
   targetPostsPerWeek Int? // đích số bài/tuần
   deadline           DateTime? // hạn đạt mục tiêu
   audienceNote       String? // mô tả tệp mục tiêu (vd "chủ nhà hàng/quán F&B Đà Nẵng")
+  icpMonthlyMinVnd   Int? // ngưỡng doanh thu/ngân sách tối thiểu của tệp khách cao cấp (VND/tháng)
+  icpNote            String? // mô tả tệp khách cao cấp muốn nhắm
   baselineFollowers  Int? // follower lúc đặt mục tiêu (đo tiến độ)
   baselineAt         DateTime? // thời điểm đặt mục tiêu
   updatedAt          DateTime  @updatedAt
