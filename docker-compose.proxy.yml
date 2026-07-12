@@ -35,6 +35,9 @@ services:
       FACEBOOK_GRAPH_VERSION: ${FACEBOOK_GRAPH_VERSION:-v21.0}
       FACEBOOK_WEBHOOK_VERIFY_TOKEN: ${FACEBOOK_WEBHOOK_VERIFY_TOKEN}
       CRON_SECRET: ${CRON_SECRET}
+      # AI viết lại caption (Copy IG→Fanpage). Bỏ trống thì dùng fallback rule-based.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      IG_CAPTION_MODEL: ${IG_CAPTION_MODEL:-claude-opus-4-8}
     depends_on:
       db:
         condition: service_healthy

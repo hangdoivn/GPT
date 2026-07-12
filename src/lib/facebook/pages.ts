@@ -65,3 +65,78 @@ export async function publishPost(
     body,
   });
 }
+
+// ─── Đăng media (Copy IG → Fanpage) ────────────────────────────
+// FB tự fetch ảnh/video từ URL của IG lúc gọi → không cần tải media về server.
+
+export interface PublishMediaResult {
+  fbPostId: string;
+  fbPermalink: string | null;
+  processing?: boolean; // video: FB xử lý bất đồng bộ
+}
+
+/** Đăng 1 ảnh: POST {pageId}/photos (FB fetch ảnh từ url). */
+export async function publishPhoto(cfg: PageCfg, url: string, caption: string): Promise<PublishMediaResult> {
+  const res = await graph<{ id: string; post_id?: string }>(`${cfg.pageId}/photos`, {
+    token: cfg.pageAccessToken,
+    method: "POST",
+    body: { url, caption, published: true },
+  });
+  const postId = res.post_id ?? res.id;
+  return { fbPostId: String(postId), fbPermalink: postId ? `https://www.facebook.com/${postId}` : null };
+}
+
+/** Đăng nhiều ảnh: upload từng ảnh (unpublished) → gom vào 1 post /feed. */
+export async function publishCarousel(cfg: PageCfg, urls: string[], message: string): Promise<PublishMediaResult> {
+  const fbids: string[] = [];
+  for (const url of urls) {
+    const up = await graph<{ id: string }>(`${cfg.pageId}/photos`, {
+      token: cfg.pageAccessToken,
+      method: "POST",
+      body: { url, published: false },
+    });
+    if (up.id) fbids.push(String(up.id));
+  }
+  if (fbids.length === 0) throw new Error("Không upload được ảnh nào cho carousel.");
+  const res = await graph<{ id: string }>(`${cfg.pageId}/feed`, {
+    token: cfg.pageAccessToken,
+    method: "POST",
+    body: { message, attached_media: fbids.map((media_fbid) => ({ media_fbid })) },
+  });
+  return { fbPostId: String(res.id), fbPermalink: res.id ? `https://www.facebook.com/${res.id}` : null };
+}
+
+/** Đăng video: POST {pageId}/videos với file_url (bất đồng bộ). */
+export async function publishVideo(cfg: PageCfg, url: string, description: string): Promise<PublishMediaResult> {
+  const res = await graph<{ id: string }>(`${cfg.pageId}/videos`, {
+    token: cfg.pageAccessToken,
+    method: "POST",
+    body: { file_url: url, description },
+  });
+  return {
+    fbPostId: String(res.id),
+    fbPermalink: res.id ? `https://www.facebook.com/${cfg.pageId}/videos/${res.id}` : null,
+    processing: true,
+  };
+}
+
+/** Đăng 1 bài IG sang Page, tự chọn cách theo mediaType. */
+export async function publishIgMedia(
+  cfg: PageCfg,
+  input: { mediaType: string; caption: string; mediaUrls: string[] },
+): Promise<PublishMediaResult> {
+  const type = String(input.mediaType || "IMAGE").toUpperCase();
+  const urls = (input.mediaUrls || []).filter((u) => typeof u === "string" && u);
+  const caption = input.caption ?? "";
+
+  if (type === "VIDEO") {
+    if (!urls[0]) throw new Error("Bài video thiếu URL media.");
+    return publishVideo(cfg, urls[0], caption);
+  }
+  if (type === "CAROUSEL_ALBUM") {
+    if (urls.length === 0) throw new Error("Carousel không có ảnh nào để đăng.");
+    return urls.length === 1 ? publishPhoto(cfg, urls[0], caption) : publishCarousel(cfg, urls, caption);
+  }
+  if (!urls[0]) throw new Error("Bài ảnh thiếu URL media.");
+  return publishPhoto(cfg, urls[0], caption);
+}

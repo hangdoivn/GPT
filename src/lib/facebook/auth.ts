@@ -17,7 +17,8 @@ export const OAUTH_SCOPES = [
   "leads_retrieval",
   "ads_read",
   "business_management",
-  // "pages_manage_posts": chỉ cần cho auto-đăng bài — thêm sau khi cần đăng từ app.
+  "pages_manage_posts", // đăng bài (ảnh/carousel/video) lên Page — cần cho Copy IG→Fanpage
+  "instagram_basic", // đọc bài Instagram của tài khoản IG liên kết Page (Copy IG→Fanpage)
 ];
 
 // Config đã phân giải: page token cho page endpoints, userToken cho Marketing API.

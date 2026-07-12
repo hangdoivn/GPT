@@ -14,6 +14,7 @@ const NAV = [
   { href: "/audience", label: "Đánh giá tệp", icon: "🧭" },
   { href: "/crm", label: "CRM chăm khách", icon: "🤝" },
   { href: "/content", label: "Nội dung", icon: "📝" },
+  { href: "/repost", label: "Copy từ Instagram", icon: "📸" },
   { href: "/settings", label: "Cài đặt", icon: "⚙️" },
 ];
 

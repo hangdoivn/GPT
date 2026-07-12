@@ -53,6 +53,7 @@ model Page {
   fbPageId    String   @unique // ID page trên Facebook
   name        String
   accessToken String? // page access token (mã hoá ở production)
+  igUserId    String? // ID tài khoản Instagram business liên kết page (Copy IG→Fanpage)
   category    String?
   followers   Int      @default(0)
   createdAt   DateTime @default(now())
@@ -140,4 +141,43 @@ model Post {
 
   @@index([pageId])
   @@index([status])
+}
+
+// ─── Copy bài Instagram → Fanpage: nhật ký chống trùng ─────────
+// Chống trùng theo (igMediaId, targetPageId): 1 bài IG chỉ đăng 1 lần cho mỗi page đích.
+model CopiedPost {
+  id               String    @id @default(cuid())
+  igMediaId        String
+  targetPageId     String // fbPageId của page đích
+  sourcePageId     String? // fbPageId của page có IG nguồn
+  igCaption        String?
+  rewrittenCaption String?
+  mediaType        String? // IMAGE | VIDEO | CAROUSEL_ALBUM
+  mediaUrls        Json?
+  status           String    @default("pending") // pending, rewritten, published, failed, skipped
+  fbPostId         String?
+  fbPermalink      String?
+  error            String?
+  igTimestamp      DateTime?
+  publishedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([igMediaId, targetPageId])
+  @@index([status])
+  @@index([targetPageId])
+}
+
+// ─── Định vị fanpage đích (dùng cho AI viết lại caption) ────────
+model PagePositioning {
+  id        String   @id @default(cuid())
+  pageId    String   @unique // fbPageId của page đích
+  pageName  String?
+  audience  String?
+  voice     String?
+  hashtags  String?
+  cta       String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
