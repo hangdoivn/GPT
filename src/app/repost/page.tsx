@@ -151,9 +151,14 @@ export default function RepostPage() {
       )}
 
       {connected && sources.length === 0 && (
-        <div className="card p-4 text-sm text-amber-700 bg-amber-50">
-          Chưa tìm thấy tài khoản Instagram nào liên kết với page. Vào <b>Cài đặt → Ngắt kết nối → đăng nhập lại</b> và
-          tick quyền <code>instagram_basic</code> + <code>pages_manage_posts</code>, đảm bảo IG đã nối với Page.
+        <div className="card p-4 text-sm text-amber-700 bg-amber-50 space-y-1">
+          <div className="font-semibold">Chưa bật đọc bài Instagram</div>
+          <div>
+            Cần 3 bước: (1) Thêm sản phẩm <b>Instagram</b> cho Facebook App tại developers.facebook.com (Add product →
+            Instagram / <i>Instagram API with Facebook Login</i>); (2) đặt <code>ENABLE_IG_SCOPE=1</code> trong{" "}
+            <code>.env</code> rồi khởi động lại app; (3) vào <b>Cài đặt → đăng nhập lại Facebook</b>, đảm bảo IG đã nối
+            Page. <span className="text-amber-600">Đăng bài lên Page vẫn hoạt động bình thường ngay bây giờ.</span>
+          </div>
         </div>
       )}
 

@@ -18,7 +18,12 @@ export const OAUTH_SCOPES = [
   "ads_read",
   "business_management",
   "pages_manage_posts", // đăng bài (ảnh/carousel/video) lên Page — cần cho Copy IG→Fanpage
-  "instagram_basic", // đọc bài Instagram của tài khoản IG liên kết Page (Copy IG→Fanpage)
+  // instagram_basic (đọc bài IG) CHỈ hợp lệ khi FB App đã thêm sản phẩm "Instagram"
+  // (Instagram API with Facebook Login). Nếu chưa thêm mà xin scope này, Facebook báo
+  // "Invalid Scopes: instagram_basic" và CHẶN cả màn đăng nhập với tài khoản dev.
+  // → Mặc định TẮT để login luôn chạy; sau khi đã thêm sản phẩm Instagram vào app,
+  //   đặt ENABLE_IG_SCOPE=1 trong .env rồi recreate container để bật phần kéo bài IG.
+  ...(process.env.ENABLE_IG_SCOPE === "1" ? ["instagram_basic"] : []),
 ];
 
 // Config đã phân giải: page token cho page endpoints, userToken cho Marketing API.

@@ -31,6 +31,8 @@ services:
       # AI viết lại caption (Copy IG→Fanpage). Bỏ trống thì dùng fallback rule-based.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       IG_CAPTION_MODEL: ${IG_CAPTION_MODEL:-claude-opus-4-8}
+      # Đặt =1 SAU KHI đã thêm sản phẩm Instagram vào FB App (xem .env.deploy.example).
+      ENABLE_IG_SCOPE: ${ENABLE_IG_SCOPE:-}
     depends_on:
       db:
         condition: service_healthy
