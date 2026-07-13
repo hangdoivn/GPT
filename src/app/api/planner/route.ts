@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   try {
-    const posts = await listPlannerPosts(sp.get("from") ?? undefined, sp.get("to") ?? undefined);
+    const posts = await listPlannerPosts(sp.get("from") ?? undefined, sp.get("to") ?? undefined, sp.get("pageFbId") ?? undefined);
     return NextResponse.json(posts);
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Lỗi" }, { status: 500 });

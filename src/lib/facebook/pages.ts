@@ -56,6 +56,22 @@ export interface FbMediaPost {
   created_time: string;
 }
 
+export interface FbScheduledPost {
+  id: string;
+  message?: string;
+  scheduled_publish_time?: number;
+  full_picture?: string;
+}
+
+/** Bài ĐÃ LÊN LỊCH trên Page (chưa đăng) — để hiện trên lịch. */
+export async function fetchScheduledPosts(cfg: PageCfg): Promise<FbScheduledPost[]> {
+  const res = await graph<{ data?: FbScheduledPost[] }>(`${cfg.pageId}/scheduled_posts`, {
+    token: cfg.pageAccessToken,
+    params: { fields: "id,message,scheduled_publish_time,full_picture", limit: 100 },
+  });
+  return res.data ?? [];
+}
+
 /** Bài FB gần đây CÓ ẢNH (dùng lại làm asset trong Planner). */
 export async function fetchPageMediaPosts(cfg: PageCfg): Promise<FbMediaPost[]> {
   const posts = await graphAll<FbMediaPost>(

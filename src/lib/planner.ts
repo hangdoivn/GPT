@@ -4,7 +4,7 @@
 
 import { prisma } from "./db";
 import { fetchIgMediaById, resolveMediaUrls } from "./facebook/instagram";
-import { publishMedia, fetchPageMediaPosts, type PublishMediaResult } from "./facebook/pages";
+import { publishMedia, fetchPageMediaPosts, fetchScheduledPosts, type PublishMediaResult } from "./facebook/pages";
 import { graph } from "./facebook/client";
 
 type PageCfg = { pageId: string; pageAccessToken: string };
@@ -64,30 +64,100 @@ function shape(p: PostRow) {
     error: p.error,
     pageName: p.page?.name ?? null,
     targetFbId: p.page?.fbPageId ?? null,
+    origin: "app" as const,
   };
 }
 
-/** Bài trong khoảng thời gian (theo lịch hoặc ngày đăng/ngày tạo) cho lưới lịch. */
-export async function listPlannerPosts(fromISO?: string, toISO?: string) {
+/** Bài lấy trực tiếp từ Facebook (đã lên lịch / đã đăng) — hiển thị, không sửa qua app. */
+function fbShape(input: {
+  id: string;
+  message?: string;
+  image?: string;
+  status: string;
+  targetFbId: string;
+  scheduledAt: Date | null;
+  publishedAt: Date | null;
+  permalink?: string | null;
+}) {
+  const at = input.scheduledAt || input.publishedAt || new Date();
+  return {
+    id: `fb_${input.id}`,
+    content: input.message ?? "",
+    status: input.status,
+    mediaType: input.image ? "IMAGE" : "TEXT",
+    mediaUrls: input.image ? [input.image] : [],
+    thumbnail: input.image ?? null,
+    scheduledAt: input.scheduledAt ? input.scheduledAt.toISOString() : null,
+    publishedAt: input.publishedAt ? input.publishedAt.toISOString() : null,
+    createdAt: at.toISOString(),
+    fbPostId: input.id,
+    fbPermalink: input.permalink ?? (input.status === "published" ? `https://www.facebook.com/${input.id}` : null),
+    error: null,
+    pageName: null,
+    targetFbId: input.targetFbId,
+    origin: "fb" as const,
+  };
+}
+
+function inRange(d: Date, from: Date | null, to: Date | null): boolean {
+  if (!from || !to) return true;
+  return d >= from && d < to;
+}
+
+/**
+ * Bài trong khoảng thời gian cho lưới lịch = bài tạo qua app + (nếu có pageFbId) bài
+ * ĐÃ LÊN LỊCH & ĐÃ ĐĂNG lấy trực tiếp từ Facebook (kể cả bài lên lịch ngoài app).
+ */
+export async function listPlannerPosts(fromISO?: string, toISO?: string, pageFbId?: string) {
   const from = fromISO ? new Date(fromISO) : null;
   const to = toISO ? new Date(toISO) : null;
   const rangeOk = from && to && !Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime());
 
-  const posts = await prisma.post.findMany({
-    where: rangeOk
-      ? {
-          OR: [
-            { scheduledAt: { gte: from!, lte: to! } },
-            { publishedAt: { gte: from!, lte: to! } },
-            { scheduledAt: null, publishedAt: null, createdAt: { gte: from!, lte: to! } },
-          ],
-        }
-      : undefined,
+  const appPosts = await prisma.post.findMany({
+    where: {
+      ...(rangeOk
+        ? {
+            OR: [
+              { scheduledAt: { gte: from!, lte: to! } },
+              { publishedAt: { gte: from!, lte: to! } },
+              { scheduledAt: null, publishedAt: null, createdAt: { gte: from!, lte: to! } },
+            ],
+          }
+        : {}),
+      ...(pageFbId ? { page: { fbPageId: pageFbId } } : {}),
+    },
     orderBy: [{ scheduledAt: "asc" }, { createdAt: "desc" }],
     include: { page: { select: { fbPageId: true, name: true } } },
     take: 500,
   });
-  return posts.map((p) => shape(p as unknown as PostRow));
+  const appShaped = appPosts.map((p) => shape(p as unknown as PostRow));
+
+  if (!pageFbId) return appShaped;
+  const cfg = await pageCfg(pageFbId);
+  if (!cfg) return appShaped;
+
+  // Bài đã có trong app (đã gắn fbPostId) thì không lấy lại từ FB.
+  const appFbIds = new Set(appShaped.map((p) => p.fbPostId).filter((x): x is string => Boolean(x)));
+
+  const [scheduled, published] = await Promise.all([
+    fetchScheduledPosts(cfg).catch(() => []),
+    fetchPageMediaPosts(cfg).catch(() => []),
+  ]);
+
+  const fbShaped: ReturnType<typeof fbShape>[] = [];
+  for (const s of scheduled) {
+    if (!s.scheduled_publish_time || appFbIds.has(s.id)) continue;
+    const when = new Date(s.scheduled_publish_time * 1000);
+    if (!inRange(when, from, to)) continue;
+    fbShaped.push(fbShape({ id: s.id, message: s.message, image: s.full_picture, status: "scheduled", targetFbId: pageFbId, scheduledAt: when, publishedAt: null }));
+  }
+  for (const p of published) {
+    if (appFbIds.has(p.id)) continue;
+    const when = new Date(p.created_time);
+    if (!inRange(when, from, to)) continue;
+    fbShaped.push(fbShape({ id: p.id, message: p.message, image: p.full_picture, status: "published", targetFbId: pageFbId, scheduledAt: null, publishedAt: when, permalink: p.permalink_url }));
+  }
+  return [...appShaped, ...fbShaped];
 }
 
 async function persist(data: {

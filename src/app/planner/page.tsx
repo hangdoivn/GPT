@@ -17,6 +17,7 @@ interface Post {
   error: string | null;
   targetFbId: string | null;
   pageName: string | null;
+  origin?: string; // "app" | "fb"
 }
 interface Target {
   fbPageId: string;
@@ -30,6 +31,7 @@ interface Compose {
   when: string; // datetime-local
   status?: string;
   fbPermalink?: string | null;
+  origin?: string; // "app" | "fb"
 }
 
 const STATUS: Record<string, { label: string; cls: string; dot: string }> = {
@@ -95,7 +97,8 @@ export default function PlannerPage() {
     try {
       const from = startOfDay(days[0]).toISOString();
       const to = addDays(days[days.length - 1], 1).toISOString();
-      const r = await fetch(`/api/planner?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+      const pg = targetFbId ? `&pageFbId=${encodeURIComponent(targetFbId)}` : "";
+      const r = await fetch(`/api/planner?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${pg}`);
       const d = await r.json();
       setPosts(Array.isArray(d) ? d : []);
     } catch {
@@ -103,7 +106,7 @@ export default function PlannerPage() {
     } finally {
       setLoading(false);
     }
-  }, [days]);
+  }, [days, targetFbId]);
   useEffect(() => { load(); }, [load]);
 
   const byDay = useMemo(() => {
@@ -131,6 +134,7 @@ export default function PlannerPage() {
       when: dtLocal(post?.scheduledAt ? new Date(post.scheduledAt) : date ? new Date(date.getFullYear(), date.getMonth(), date.getDate(), 9, 0) : new Date()),
       status: post?.status,
       fbPermalink: post?.fbPermalink,
+      origin: post?.origin,
     });
   }
 
@@ -188,7 +192,7 @@ export default function PlannerPage() {
   }
 
   const todayKey = ymd(new Date());
-  const publishedEdit = compose?.status === "published";
+  const readOnly = compose?.origin === "fb" || compose?.status === "published";
 
   return (
     <div className="space-y-4">
@@ -276,9 +280,20 @@ export default function PlannerPage() {
                 <button className="text-gray-400 hover:text-gray-700" onClick={() => setCompose(null)}>✕</button>
               </div>
 
-              {publishedEdit ? (
-                <div className="text-sm text-gray-600">
-                  Bài đã đăng.{compose.fbPermalink && <> <a className="text-brand" href={compose.fbPermalink} target="_blank" rel="noreferrer">Xem trên Facebook ↗</a></>}
+              {readOnly ? (
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">
+                    {compose.status === "scheduled" ? "🕒 Đã lên lịch trên Facebook" : "✓ Đã đăng"}
+                    {compose.origin === "fb" && <span className="text-gray-400 font-normal"> · quản lý ở Facebook</span>}
+                  </div>
+                  {compose.asset?.previewUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={compose.asset.previewUrl} alt="" className="w-full max-h-56 object-contain rounded-lg bg-gray-100" />
+                  )}
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{compose.caption || "(không có caption)"}</p>
+                  {compose.fbPermalink && (
+                    <a className="text-brand text-sm" href={compose.fbPermalink} target="_blank" rel="noreferrer">Xem trên Facebook ↗</a>
+                  )}
                 </div>
               ) : (
                 <>
@@ -315,12 +330,12 @@ export default function PlannerPage() {
               )}
 
               <div className="flex items-center gap-2 pt-1">
-                {compose.editingId && !publishedEdit && (
+                {compose.editingId && !readOnly && (
                   <button className="btn-ghost text-red-600" disabled={saving} onClick={() => del(compose.editingId!)}>Xoá</button>
                 )}
                 <div className="ml-auto flex gap-2">
                   <button className="btn-ghost" disabled={saving} onClick={() => setCompose(null)}>Đóng</button>
-                  {!publishedEdit && (
+                  {!readOnly && (
                     <>
                       <button className="btn-ghost" disabled={saving} onClick={() => save("draft")}>Lưu nháp</button>
                       <button className="btn-ghost" disabled={saving} onClick={() => save("schedule")}>Lên lịch</button>
