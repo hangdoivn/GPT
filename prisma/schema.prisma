@@ -128,7 +128,15 @@ model Post {
   pageId      String
   content     String
   mediaUrl    String?
-  status      String    @default("draft") // draft, scheduled, published
+  // ─ Content Planner (Phase 1) ─
+  mediaType       String? // TEXT | IMAGE | VIDEO | CAROUSEL_ALBUM
+  mediaUrls       Json? // đa ảnh (carousel); ảnh/video = 1 phần tử
+  fbPermalink     String?
+  error           String?
+  source          String? // manual | upload | ig_repost | fb_repost
+  sourceIgMediaId String? // nếu asset lấy từ bài IG → re-resolve URL tươi khi đăng
+  sourceFbId      String? // fbPageId của page nguồn (cho re-resolve IG)
+  status      String    @default("draft") // draft, scheduled, published, failed
   scheduledAt DateTime?
   publishedAt DateTime?
   likes       Int       @default(0)
@@ -141,6 +149,7 @@ model Post {
 
   @@index([pageId])
   @@index([status])
+  @@index([scheduledAt])
 }
 
 // ─── Copy bài Instagram → Fanpage: nhật ký chống trùng ─────────
