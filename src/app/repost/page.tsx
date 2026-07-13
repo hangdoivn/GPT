@@ -268,7 +268,6 @@ function PostCard({
 }) {
   const [copy, setCopy] = useState<Copy>(media.copy);
   const [draft, setDraft] = useState(media.copy?.rewrittenCaption ?? media.caption ?? "");
-  const [editing, setEditing] = useState(Boolean(media.copy?.rewrittenCaption));
   const [rewriting, setRewriting] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -290,7 +289,6 @@ function PostCard({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.toString?.() ?? "Lỗi");
       setDraft(data.caption);
-      setEditing(true);
       setCopy((c) => ({ status: c?.status === "published" ? "published" : "rewritten", fbPermalink: c?.fbPermalink ?? null, rewrittenCaption: data.caption, error: null }));
       notify(data.source === "ai" ? "Đã viết lại caption bằng AI." : "AI đang tắt — dùng caption gốc + hashtag định vị.");
     } catch (e) {
@@ -338,17 +336,25 @@ function PostCard({
       </div>
 
       <div className="p-3 flex flex-col gap-2 flex-1">
-        {!editing ? (
-          <p className={`text-xs whitespace-pre-wrap max-h-24 overflow-hidden ${media.caption ? "text-gray-600" : "text-gray-400 italic"}`}>
-            {media.caption || "(Không có caption gốc)"}
+        {published ? (
+          <p className="text-xs whitespace-pre-wrap max-h-28 overflow-auto text-gray-600">
+            {copy?.rewrittenCaption || media.caption || "(không có caption)"}
           </p>
         ) : (
-          <textarea
-            className="input text-sm min-h-[110px]"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            disabled={published}
-          />
+          <>
+            {media.caption && (
+              <details className="text-[11px] text-gray-400">
+                <summary className="cursor-pointer select-none">Caption gốc IG</summary>
+                <p className="whitespace-pre-wrap mt-1 max-h-24 overflow-auto">{media.caption}</p>
+              </details>
+            )}
+            <textarea
+              className="input text-sm min-h-[110px]"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Caption sẽ đăng lên Page — sửa tuỳ ý, hoặc bấm 'Viết lại (AI)'"
+            />
+          </>
         )}
 
         <div className="flex gap-2 flex-wrap mt-auto">
@@ -366,7 +372,7 @@ function PostCard({
           ) : (
             <>
               <button className="btn-ghost text-xs py-1 px-2" disabled={rewriting || publishing} onClick={rewrite}>
-                {rewriting ? "Đang viết…" : editing ? "✨ Viết lại lần nữa" : "✨ Viết lại (AI)"}
+                {rewriting ? "Đang viết…" : "✨ Viết lại (AI)"}
               </button>
               <button className="btn-primary text-xs py-1 px-2" disabled={publishing || rewriting} onClick={() => setConfirm(true)}>
                 {publishing ? "Đang đăng…" : "Đăng sang Page"}
