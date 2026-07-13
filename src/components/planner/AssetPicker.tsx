@@ -17,6 +17,17 @@ type Src = { fbPageId: string; name: string; igUsername?: string };
 type IgItem = { id: string; caption: string | null; mediaType: string; mediaUrl: string | null; thumbnailUrl: string | null };
 type FbItem = { id: string; message: string | null; imageUrl: string | null; permalink: string | null };
 
+// Link TRANG (không phải file media) → Facebook không tải lên được.
+const PAGE_HOSTS = ["instagram.com", "facebook.com", "m.facebook.com", "fb.watch", "tiktok.com", "vt.tiktok.com", "youtube.com", "youtu.be"];
+function isPageUrl(u: string): boolean {
+  try {
+    const h = new URL(u).hostname.replace(/^www\./, "").toLowerCase();
+    return PAGE_HOSTS.includes(h);
+  } catch {
+    return false;
+  }
+}
+
 export function AssetPicker({ onPick }: { onPick: (a: PickedAsset) => void }) {
   const [tab, setTab] = useState<Tab>("upload");
   const [busy, setBusy] = useState(false);
@@ -200,7 +211,7 @@ export function AssetPicker({ onPick }: { onPick: (a: PickedAsset) => void }) {
 
       {tab === "url" && (
         <div className="space-y-2">
-          <input className="input" placeholder="Dán URL ảnh/video công khai…" value={urlVal} onChange={(e) => setUrlVal(e.target.value)} />
+          <input className="input" placeholder="Dán URL FILE ảnh/video trực tiếp (vd …/video.mp4)…" value={urlVal} onChange={(e) => setUrlVal(e.target.value)} />
           <div className="flex items-center gap-2">
             <select className="input max-w-[140px]" value={urlType} onChange={(e) => setUrlType(e.target.value)}>
               <option value="IMAGE">Ảnh</option>
@@ -210,11 +221,21 @@ export function AssetPicker({ onPick }: { onPick: (a: PickedAsset) => void }) {
               type="button"
               className="btn-primary"
               disabled={!urlVal.trim()}
-              onClick={() => onPick({ mediaType: urlType, mediaUrls: [urlVal.trim()], source: "manual", previewUrl: urlVal.trim() })}
+              onClick={() => {
+                const u = urlVal.trim();
+                if (isPageUrl(u)) {
+                  setErr("Đây là link TRANG (Reel/bài viết), KHÔNG phải file media — Facebook không tải lên được. Để lấy Reel/Video/ảnh từ Instagram của bạn, dùng tab “📸 Từ Instagram”. Hoặc dán link file trực tiếp (…/abc.mp4, …/abc.jpg).");
+                  return;
+                }
+                onPick({ mediaType: urlType, mediaUrls: [u], source: "manual", previewUrl: u });
+              }}
             >
               Dùng link này
             </button>
           </div>
+          <p className="text-xs text-gray-400">
+            Cần link FILE trực tiếp. Muốn đăng Reel/Video từ Instagram → dùng tab <b>“📸 Từ Instagram”</b> (app tự lấy link video thật), đừng dán link trang instagram.com/reel/…
+          </p>
         </div>
       )}
     </div>

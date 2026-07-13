@@ -19,6 +19,16 @@ function str(v: unknown): string | null {
   return t ? t : null;
 }
 
+// Link TRANG (Reel/bài viết), KHÔNG phải file media → FB nhận nhưng xử lý thất bại.
+const PAGE_HOSTS = ["instagram.com", "facebook.com", "m.facebook.com", "fb.watch", "tiktok.com", "vt.tiktok.com", "youtube.com", "youtu.be"];
+function isPageUrl(u: string): boolean {
+  try {
+    return PAGE_HOSTS.includes(new URL(u).hostname.replace(/^www\./, "").toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 async function pageCfg(fbPageId: string): Promise<PageCfg | null> {
   const page = await prisma.page.findUnique({ where: { fbPageId } });
   if (!page?.accessToken) return null;
@@ -264,6 +274,13 @@ export async function createPlannerPost(body: PlannerInput) {
   const resolved = await resolveAssets({ mediaType, mediaUrls, sourceIgMediaId, sourceFbId });
   mediaType = resolved.mediaType;
   mediaUrls = resolved.mediaUrls;
+
+  const pageLink = mediaUrls.find((u) => isPageUrl(u));
+  if (pageLink) {
+    throw new Error(
+      "Link không phải file media trực tiếp (đang là link trang như instagram.com/reel/…). Dùng tab “Từ Instagram” để lấy Reel/Video, hoặc dán link file .mp4/.jpg.",
+    );
+  }
 
   const scheduledUnix = scheduledAt ? validateSchedule(scheduledAt) : undefined;
 
