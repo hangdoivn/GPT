@@ -38,9 +38,11 @@ export async function POST(req: NextRequest) {
   const filename = `${randomUUID()}${EXT[file.type] || ".bin"}`;
   await writeFile(path.join(dir, filename), Buffer.from(await file.arrayBuffer()));
 
+  // Phục vụ qua route handler /media/<file> (Next KHÔNG serve file thêm vào public/
+  // lúc runtime), không dùng đường /uploads/ tĩnh.
   const origin = (process.env.APP_URL || req.nextUrl.origin).replace(/\/$/, "");
   return NextResponse.json({
-    url: `${origin}/uploads/${filename}`,
+    url: `${origin}/media/${filename}`,
     mediaType: file.type.startsWith("video/") ? "VIDEO" : "IMAGE",
   });
 }
