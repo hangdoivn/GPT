@@ -37,6 +37,7 @@ export function AssetPicker({ onPick }: { onPick: (a: PickedAsset) => void }) {
   const [sources, setSources] = useState<Src[]>([]);
   const [igSrc, setIgSrc] = useState("");
   const [igItems, setIgItems] = useState<IgItem[]>([]);
+  const [igFilter, setIgFilter] = useState<"all" | "VIDEO" | "IMAGE">("all");
   const [fbItems, setFbItems] = useState<FbItem[]>([]);
   // URL
   const [urlVal, setUrlVal] = useState("");
@@ -55,16 +56,26 @@ export function AssetPicker({ onPick }: { onPick: (a: PickedAsset) => void }) {
     }
   }, [tab, sources.length]);
 
+  // Nạp HẾT các trang media của IG (không chỉ trang đầu) → lấy được toàn bộ ảnh/video.
   const loadIg = useCallback(async (fbId: string) => {
     setIgSrc(fbId);
+    setIgItems([]);
     if (!fbId) return;
     setBusy(true);
     setErr(null);
     try {
-      const r = await fetch(`/api/instagram/media?sourceFbId=${encodeURIComponent(fbId)}&targetFbId=${encodeURIComponent(fbId)}`);
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? "Lỗi");
-      setIgItems(d.items ?? []);
+      const all: IgItem[] = [];
+      let after = "";
+      for (let i = 0; i < 15; i++) {
+        const u = `/api/instagram/media?sourceFbId=${encodeURIComponent(fbId)}&targetFbId=${encodeURIComponent(fbId)}${after ? `&after=${encodeURIComponent(after)}` : ""}`;
+        const r = await fetch(u);
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error ?? "Lỗi");
+        all.push(...(d.items ?? []));
+        setIgItems([...all]); // hiện dần
+        if (!d.nextAfter) break;
+        after = d.nextAfter;
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Lỗi tải bài IG");
     } finally {
@@ -148,9 +159,26 @@ export function AssetPicker({ onPick }: { onPick: (a: PickedAsset) => void }) {
               <option key={s.fbPageId} value={s.fbPageId}>@{s.igUsername} (qua {s.name})</option>
             ))}
           </select>
-          {busy && <p className="text-sm text-gray-500">Đang tải…</p>}
+          {igItems.length > 0 && (
+            <div className="flex items-center gap-2 text-xs">
+              {(["all", "VIDEO", "IMAGE"] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setIgFilter(f)}
+                  className={`px-2 py-1 rounded-md ${igFilter === f ? "bg-brand text-white" : "bg-gray-100 text-gray-600"}`}
+                >
+                  {f === "all" ? "Tất cả" : f === "VIDEO" ? "🎬 Video" : "📷 Ảnh"}
+                </button>
+              ))}
+              <span className="text-gray-400 ml-auto">{busy ? "Đang tải…" : `${igItems.length} bài`}</span>
+            </div>
+          )}
+          {busy && igItems.length === 0 && <p className="text-sm text-gray-500">Đang tải…</p>}
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-72 overflow-auto">
-            {igItems.map((it) => (
+            {igItems
+              .filter((it) => igFilter === "all" || (igFilter === "VIDEO" ? it.mediaType?.toUpperCase() === "VIDEO" : it.mediaType?.toUpperCase() !== "VIDEO"))
+              .map((it) => (
               <button
                 type="button"
                 key={it.id}
