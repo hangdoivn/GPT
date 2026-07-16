@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { QualityBadge } from "@/components/ui";
 
 interface Lead {
@@ -24,6 +25,8 @@ const ORDER = COLUMNS.map((c) => c.key);
 
 export default function CrmPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [opening, setOpening] = useState<string | null>(null);
+  const router = useRouter();
 
   const load = useCallback(async () => {
     // CRM chỉ quan tâm lead không phải rác cho gọn — nhưng vẫn cho xem tất.
@@ -34,6 +37,21 @@ export default function CrmPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Mở (hoặc tạo nếu chưa có) dự án cho lead đã chốt deal. Idempotent ở API.
+  async function openProject(lead: Lead) {
+    setOpening(lead.id);
+    const res = await fetch("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fromLeadId: lead.id }),
+    });
+    setOpening(null);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.project?.id) router.push(`/projects/${data.project.id}`);
+    }
+  }
 
   async function move(lead: Lead, dir: 1 | -1) {
     const idx = ORDER.indexOf(lead.crmStatus);
@@ -71,6 +89,15 @@ export default function CrmPage() {
                       <QualityBadge quality={l.quality} />
                     </div>
                     <div className="text-xs text-gray-500 font-mono mt-0.5">{l.phone ?? "—"}</div>
+                    {col.key === "won" && (
+                      <button
+                        className="btn-ghost text-xs w-full mt-2 justify-center"
+                        onClick={() => openProject(l)}
+                        disabled={opening === l.id}
+                      >
+                        {opening === l.id ? "Đang mở…" : "📁 Dự án"}
+                      </button>
+                    )}
                     <div className="flex justify-between mt-2">
                       <button className="text-xs text-gray-400 hover:text-brand" onClick={() => move(l, -1)}>◀</button>
                       <button className="text-xs text-gray-400 hover:text-brand" onClick={() => move(l, 1)}>▶</button>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
+import { createProjectFromLead } from "@/lib/project-service";
 
 export const dynamic = "force-dynamic";
 
@@ -10,18 +11,33 @@ const updateSchema = z.object({
   note: z.string().nullish(),
 });
 
-// PATCH /api/leads/:id — cập nhật trạng thái CRM / ghi chú
+// PATCH /api/leads/:id — cập nhật trạng thái CRM / ghi chú.
+// Khi chuyển sang "won" (chốt deal) → tự tạo Project để account triển khai.
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json().catch(() => null);
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
+
+  const before = await prisma.lead.findUnique({ where: { id: params.id }, select: { crmStatus: true } });
   const updated = await prisma.lead.update({
     where: { id: params.id },
     data: parsed.data,
   });
-  return NextResponse.json(updated);
+
+  // Auto-tạo dự án khi lead vừa chuyển sang "won". Idempotent (không tạo trùng).
+  let project = null;
+  if (parsed.data.crmStatus === "won" && before?.crmStatus !== "won") {
+    try {
+      const res = await createProjectFromLead(params.id);
+      project = res.project;
+    } catch {
+      // Không chặn cập nhật CRM nếu tạo project lỗi (vd trùng mã hiếm gặp).
+    }
+  }
+
+  return NextResponse.json({ ...updated, project });
 }
 
 // DELETE /api/leads/:id

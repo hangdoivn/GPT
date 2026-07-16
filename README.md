@@ -11,6 +11,7 @@ App quản lý fanpage cho **Hàng Đôi Studio**, giải quyết trực tiếp 
 | 🔎 **Insights Page** | Kéo chỉ số page (tiếp cận, tương tác, follow/unfollow) 28 ngày và **tự động phân tích** ra nhận định + khuyến nghị. |
 | 🧭 **Đánh giá tệp** | Chấm điểm sức khoẻ tệp người xem (0–100) và **phán quyết Giữ page / Sửa ads / Detox / Làm page mới**; chẩn đoán rác do cách nhắm ads hay do tệp page (so broad vs lookalike/retarget). |
 | 🤝 **CRM** | Kanban 5 bước: Mới → Đã liên hệ → Tiềm năng → Chốt đơn / Mất. |
+| 📁 **Dự án (PRJ)** | Sau khi chốt deal → quản lý triển khai: Kanban theo giai đoạn (Tiếp nhận → Triển khai → Nghiệm thu → Bàn giao → Hoàn tất), giao việc cho team, mốc thanh toán & công nợ, deadline/quá hạn, nhật ký. Tự tạo dự án khi lead lên "Chốt đơn" (hoặc bấm tạo thủ công). |
 | 📝 **Nội dung** | Soạn, lưu nháp, lên lịch và đăng bài lên page. |
 | 🔌 **Facebook API** | Kéo lead từ Lead Ads, campaign từ Marketing API, webhook nhận lead realtime. |
 
