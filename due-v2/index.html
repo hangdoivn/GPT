@@ -3,19 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#edf3ff">
+<meta name="theme-color" content="#14080f">
 <title>DUE Credit UI</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="detail.css">
 </head><body>
 <header class="top glass-strong"><div class="brand"><div class="logo">DUE</div><div><strong>Đại học Kinh tế — ĐH Đà Nẵng</strong><div class="sub">Cổng đăng ký học phần</div></div></div><span class="status">● Đang mở đăng ký</span></header>
-<div class="shell"><aside class="side glass"><nav class="nav"><button class="active" data-screen="schedule">▦ Thời khóa biểu</button><button data-screen="overview">⌂ Tổng quan</button><button data-screen="registered">✓ Đã đăng ký</button><button data-screen="register">＋ Đăng ký học phần</button></nav></aside><main>
+<div class="shell"><aside class="side glass"><nav class="nav">
+<button class="active" data-screen="schedule"><span class="navIcon iconCalendar" aria-hidden="true"></span><span>Thời khóa biểu</span></button>
+<button data-screen="overview"><span class="navIcon iconHome" aria-hidden="true"></span><span>Tổng quan</span></button>
+<button data-screen="registered"><span class="navIcon iconCheck" aria-hidden="true"></span><span>Đã đăng ký</span></button>
+<button data-screen="register"><span class="navIcon iconAdd" aria-hidden="true"></span><span>Đăng ký học phần</span></button>
+</nav></aside><main>
 <section id="overview" class="screen"><div class="heading"><div><h1>Chào Nhật Lan,</h1><p class="sub">Kiểm tra phương án học tập trước khi xác nhận.</p></div><button class="btn primary" data-go="register">Đăng ký học phần →</button></div><div class="metrics"><div class="metric glass"><span>Tín chỉ</span><strong data-credits>19/21</strong></div><div class="metric glass"><span>Học phần</span><strong data-count>8</strong></div><div class="metric glass"><span>Xung đột</span><strong data-conflicts>0</strong></div><div class="metric glass"><span>GPA</span><strong>2.64</strong></div></div><div class="hero"><small>ĐỢT ĐĂNG KÝ ĐANG MỞ</small><h2>Hoàn thiện thời khóa biểu trong một luồng duy nhất.</h2><p>Tìm lớp, kiểm tra trùng lịch và xác nhận toàn bộ phương án trước khi gửi lên hệ thống.</p><button class="btn" data-go="schedule">Xem thời khóa biểu</button> <button class="btn" data-go="register">Đăng ký học phần</button></div></section>
 <section id="register" class="screen"><div class="heading"><div><h1>Đăng ký học phần</h1><p class="sub">Đây là chức năng phụ. Lịch học vẫn là màn hình chính.</p></div><span class="badge blue">Mở đến 22/07 · 17:00</span></div><div class="register"><div><div class="filters glass"><div class="field"><label>Tìm học phần</label><input id="search" placeholder="Tên môn hoặc mã lớp"></div><div class="field"><label>Loại đăng ký</label><select id="type"><option value="all">Tất cả</option><option value="first">Học lần đầu</option><option value="retake">Học lại</option><option value="improve">Cải thiện</option></select></div><div class="field"><label>Ngày học</label><select id="day"><option value="all">Tất cả ngày</option><option value="2">Thứ 2</option><option value="3">Thứ 3</option><option value="4">Thứ 4</option><option value="5">Thứ 5</option><option value="6">Thứ 6</option></select></div></div><div id="courseList" class="list"></div></div><aside class="card cart glass"><div class="card-head"><strong>Phương án đăng ký</strong><span id="cartBadge" class="badge blue">0 môn</span></div><div class="card-body"><div class="summary"><div><span>Tín chỉ mới</span><strong id="newCredits">0</strong></div><div><span>Tổng dự kiến</span><strong id="projected">19/21</strong></div></div><div id="cartList" class="cart-list"></div><div><span>Giới hạn: </span><strong id="validation">Đạt</strong></div></div><div class="cart-foot"><button id="review" class="btn primary" disabled>Xem lại và xác nhận</button></div></aside></div></section>
 <section id="schedule" class="screen active"><div class="heading"><div><h1>Thời khóa biểu</h1><p class="sub">Xem theo khung giờ thực tế. Số tiết được giữ lại làm thông tin đối chiếu.</p></div><button class="btn" data-go="register">Điều chỉnh</button></div><div id="mobileDayTabs" class="mobileDayTabs"></div><div id="mobileSchedule" class="mobileSchedule"></div><div class="schedule-wrap glass"><div id="scheduleGrid" class="schedule"></div></div></section>
 <section id="registered" class="screen"><div class="heading"><div><h1>Học phần đã đăng ký</h1><p class="sub">19 tín chỉ, không tính học phần Thể dục.</p></div></div><div class="table-wrap glass"><table><thead><tr><th>Học phần</th><th>Lớp</th><th>TC</th><th>Thời gian</th><th>Trạng thái</th></tr></thead><tbody id="registeredTable"></tbody></table></div></section>
 </main></div>
-<nav class="mobile glass-strong"><button class="active" data-screen="schedule">▦<br>Lịch</button><button data-screen="overview">⌂<br>Tổng quan</button><button data-screen="registered">✓<br>Đã học</button><button data-screen="register">＋<br>Đăng ký</button></nav>
+<nav class="mobile glass-strong">
+<button class="active" data-screen="schedule"><span class="navIcon iconCalendar" aria-hidden="true"></span><span>Lịch</span></button>
+<button data-screen="overview"><span class="navIcon iconHome" aria-hidden="true"></span><span>Tổng quan</span></button>
+<button data-screen="registered"><span class="navIcon iconCheck" aria-hidden="true"></span><span>Đã học</span></button>
+<button data-screen="register"><span class="navIcon iconAdd" aria-hidden="true"></span><span>Đăng ký</span></button>
+</nav>
 <div id="modal" class="modal"><div class="dialog glass-strong"><h2>Xác nhận phương án</h2><div id="modalList" class="cart-list"></div><div class="actions"><button id="close" class="btn">Quay lại</button><button id="confirm" class="btn primary">Xác nhận</button></div></div></div><div id="toast" class="toast">Đăng ký thành công.</div>
 <script src="app.js"></script>
 <script src="detail.js"></script>
