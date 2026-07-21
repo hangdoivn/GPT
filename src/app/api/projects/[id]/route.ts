@@ -47,7 +47,7 @@ const updateSchema = z.object({
   customerPhone: z.string().max(50).nullish(),
   stage: z.enum(STAGE_KEYS as [string, ...string[]]).optional(),
   priority: z.enum(PRIORITIES).optional(),
-  contractValue: z.number().int().min(0).optional(),
+  contractValue: z.number().int().min(0).max(2_147_483_647).optional(), // giới hạn INT4 (VND)
   deadline: z
     .string()
     .nullish()
@@ -77,7 +77,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (d.contractValue !== undefined) data.contractValue = d.contractValue;
   if (d.deadline !== undefined) data.deadline = d.deadline ? new Date(d.deadline) : null;
 
-  const updated = await prisma.project.update({ where: { id: params.id }, data });
+  let updated;
+  try {
+    updated = await prisma.project.update({ where: { id: params.id }, data });
+  } catch (e) {
+    // Bị xoá xen giữa lúc kiểm tra và cập nhật (P2025) → 404 thay vì 500.
+    if ((e as { code?: string }).code === "P2025") {
+      return NextResponse.json({ error: "Không tìm thấy dự án" }, { status: 404 });
+    }
+    throw e;
+  }
 
   // Ghi nhật ký khi đổi giai đoạn.
   if (d.stage !== undefined && d.stage !== before.stage) {
@@ -89,6 +98,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
 // DELETE /api/projects/:id — xoá dự án (cascade tasks/milestones/members/log).
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  await prisma.project.delete({ where: { id: params.id } });
+  // deleteMany không ném khi không có bản ghi → trả 404 gọn thay vì 500 (P2025).
+  const res = await prisma.project.deleteMany({ where: { id: params.id } });
+  if (res.count === 0) return NextResponse.json({ error: "Không tìm thấy dự án" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

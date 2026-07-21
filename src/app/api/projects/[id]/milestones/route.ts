@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const schema = z.object({
   title: z.string().min(1).max(200),
-  amount: z.number().int().min(0),
+  amount: z.number().int().min(0).max(2_147_483_647), // giới hạn INT4 (VND)
   dueDate: z
     .string()
     .nullish()

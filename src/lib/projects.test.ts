@@ -65,6 +65,15 @@ describe("paymentSummary", () => {
     expect(s.paidPct).toBe(100);
     expect(s.remaining).toBe(0);
   });
+
+  it("thu gần đủ (99.7%) KHÔNG làm tròn lên 100 khi vẫn còn nợ", () => {
+    const s = paymentSummary(10_000_000, [
+      { amount: 9_970_000, paid: true },
+      { amount: 30_000, paid: false },
+    ]);
+    expect(s.paidPct).toBe(99);
+    expect(s.remaining).toBe(30_000);
+  });
 });
 
 describe("daysLeft", () => {
@@ -96,6 +105,22 @@ describe("isOverdue", () => {
   });
   it("chưa tới hạn -> không quá hạn", () => {
     expect(isOverdue("2026-07-20T00:00:00Z", "doing", now)).toBe(false);
+  });
+});
+
+// "Hôm nay" phải tính theo lịch VN (UTC+7), không theo UTC.
+describe("daysLeft/isOverdue theo lịch VN (UTC+7)", () => {
+  // 2026-07-21 03:00 giờ VN = 2026-07-20T20:00:00Z (vẫn là 20/07 theo UTC).
+  const nowVnMorning = new Date("2026-07-20T20:00:00Z");
+
+  it("sáng sớm giờ VN đúng ngày đáo hạn -> còn 0 ngày (không phải 1)", () => {
+    expect(daysLeft("2026-07-21T00:00:00Z", nowVnMorning)).toBe(0);
+  });
+  it("sáng sớm giờ VN, hạn hôm qua (VN) -> đã trễ 1 ngày", () => {
+    expect(daysLeft("2026-07-20T00:00:00Z", nowVnMorning)).toBe(-1);
+  });
+  it("hạn hôm qua (VN) + đang triển khai -> quá hạn ngay sáng sớm giờ VN", () => {
+    expect(isOverdue("2026-07-20T00:00:00Z", "doing", nowVnMorning)).toBe(true);
   });
 });
 

@@ -76,22 +76,30 @@ export function paymentSummary(contractValue: number, milestones: MilestoneLike[
     .filter((m) => m.paid)
     .reduce((s, m) => s + Math.max(0, Math.round(m.amount || 0)), 0);
   const remaining = Math.max(0, cv - paid);
-  const paidPct = cv > 0 ? Math.min(100, Math.round((paid / cv) * 100)) : 0;
+  // Chỉ hiện 100% khi ĐÃ thu đủ. Nếu còn thiếu chút ít (vd 99.7%) mà làm tròn lên
+  // 100 thì hiểu nhầm là đã tất toán trong khi remaining vẫn > 0 → kẹp ở 99.
+  const paidPct = cv > 0 ? (paid >= cv ? 100 : Math.min(99, Math.round((paid / cv) * 100))) : 0;
   const unplanned = Math.max(0, cv - planned);
   return { contractValue: cv, planned, paid, remaining, paidPct, unplanned };
 }
 
 // ─── Thời hạn ──────────────────────────────────────────────────
 const DAY_MS = 24 * 60 * 60 * 1000;
+// App phục vụ VN (UTC+7, không có DST). "Hôm nay" phải tính theo lịch VN, không
+// theo UTC — nếu không, buổi sáng sớm giờ VN (còn là hôm qua theo UTC) sẽ đếm sai
+// số ngày còn lại / đánh dấu quá hạn trễ mất một ngày.
+const VN_OFFSET_MS = 7 * 60 * 60 * 1000;
 
 // Số ngày còn lại tới deadline (âm = đã trễ). null nếu không đặt hạn.
 export function daysLeft(deadline: Date | string | null | undefined, now: Date): number | null {
   if (!deadline) return null;
   const d = deadline instanceof Date ? deadline : new Date(deadline);
   if (Number.isNaN(d.getTime())) return null;
-  // Chuẩn hoá về mốc ngày để đếm ngày cho trực quan.
+  // deadline nhập dạng ngày → lưu ở mốc 00:00Z, ngày UTC của nó CHÍNH là ngày dự
+  // định. "Hôm nay" thì quy về ngày lịch VN (dời +7h rồi lấy ngày UTC).
   const a = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-  const b = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const nowVn = new Date(now.getTime() + VN_OFFSET_MS);
+  const b = Date.UTC(nowVn.getUTCFullYear(), nowVn.getUTCMonth(), nowVn.getUTCDate());
   return Math.round((a - b) / DAY_MS);
 }
 

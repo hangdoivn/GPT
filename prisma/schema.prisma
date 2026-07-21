@@ -228,7 +228,7 @@ model Project {
   activities ProjectActivity[]
 
   @@index([stage])
-  @@index([leadId])
+  // leadId đã có index từ @unique ở trên → không cần @@index riêng (tránh trùng).
 }
 
 // Đầu việc trong dự án

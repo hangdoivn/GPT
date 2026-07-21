@@ -84,9 +84,6 @@ CREATE UNIQUE INDEX "Project_leadId_key" ON "Project"("leadId");
 CREATE INDEX "Project_stage_idx" ON "Project"("stage");
 
 -- CreateIndex
-CREATE INDEX "Project_leadId_idx" ON "Project"("leadId");
-
--- CreateIndex
 CREATE INDEX "ProjectTask_projectId_idx" ON "ProjectTask"("projectId");
 
 -- CreateIndex

@@ -70,7 +70,9 @@ const createSchema = z
     customerName: z.string().min(1).max(200).optional(),
     customerPhone: z.string().max(50).nullish(),
     description: z.string().max(2000).nullish(),
-    contractValue: z.number().int().min(0).optional(),
+    // Tiền VND lưu ở cột INTEGER (Postgres INT4, tối đa 2_147_483_647 ≈ 2,14 tỷ).
+    // Vượt ngưỡng sẽ tràn cột → chặn ở đây trả 400 thay vì để DB ném 500.
+    contractValue: z.number().int().min(0).max(2_147_483_647).optional(),
     priority: z.enum(PRIORITIES).optional(),
     deadline: z
       .string()
@@ -91,20 +93,28 @@ export async function POST(req: NextRequest) {
   }
   const d = parsed.data;
 
-  if (d.fromLeadId) {
-    const { project, created } = await createProjectFromLead(d.fromLeadId);
-    if (!project) return NextResponse.json({ error: "Không tìm thấy lead" }, { status: 404 });
-    return NextResponse.json({ project, created }, { status: created ? 201 : 200 });
-  }
+  try {
+    if (d.fromLeadId) {
+      const { project, created } = await createProjectFromLead(d.fromLeadId);
+      if (!project) return NextResponse.json({ error: "Không tìm thấy lead" }, { status: 404 });
+      return NextResponse.json({ project, created }, { status: created ? 201 : 200 });
+    }
 
-  const project = await createProject({
-    name: d.name!,
-    customerName: d.customerName!,
-    customerPhone: d.customerPhone ?? null,
-    description: d.description ?? null,
-    contractValue: d.contractValue ?? 0,
-    priority: d.priority ?? "normal",
-    deadline: d.deadline ? new Date(d.deadline) : null,
-  });
-  return NextResponse.json({ project, created: true }, { status: 201 });
+    const project = await createProject({
+      name: d.name!,
+      customerName: d.customerName!,
+      customerPhone: d.customerPhone ?? null,
+      description: d.description ?? null,
+      contractValue: d.contractValue ?? 0,
+      priority: d.priority ?? "normal",
+      deadline: d.deadline ? new Date(d.deadline) : null,
+    });
+    return NextResponse.json({ project, created: true }, { status: 201 });
+  } catch (e) {
+    // Trùng ràng buộc unique (mã dự án khi tạo đồng thời, hoặc lead đã có dự án).
+    if ((e as { code?: string }).code === "P2002") {
+      return NextResponse.json({ error: "Trùng dữ liệu (mã dự án hoặc lead đã có dự án)" }, { status: 409 });
+    }
+    throw e;
+  }
 }

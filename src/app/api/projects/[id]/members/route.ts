@@ -26,9 +26,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   });
   if (dup) return NextResponse.json({ error: "Thành viên đã có trong dự án" }, { status: 409 });
 
-  const member = await prisma.projectMember.create({
-    data: { projectId: params.id, name: parsed.data.name, role: parsed.data.role ?? null },
-  });
+  let member;
+  try {
+    member = await prisma.projectMember.create({
+      data: { projectId: params.id, name: parsed.data.name, role: parsed.data.role ?? null },
+    });
+  } catch (e) {
+    // Race double-click: qua được findFirst nhưng dính @@unique([projectId,name]).
+    if ((e as { code?: string }).code === "P2002") {
+      return NextResponse.json({ error: "Thành viên đã có trong dự án" }, { status: 409 });
+    }
+    throw e;
+  }
   await logActivity(params.id, "note", `Giao việc cho ${member.name}${member.role ? ` (${member.role})` : ""}.`);
   return NextResponse.json(member, { status: 201 });
 }

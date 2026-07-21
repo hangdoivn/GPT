@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const schema = z.object({
   title: z.string().min(1).max(200).optional(),
-  amount: z.number().int().min(0).optional(),
+  amount: z.number().int().min(0).max(2_147_483_647).optional(), // giới hạn INT4 (VND)
   paid: z.boolean().optional(),
   dueDate: z
     .string()
@@ -39,7 +39,16 @@ export async function PATCH(
     data.paidAt = d.paid ? new Date() : null;
   }
 
-  const m = await prisma.projectMilestone.update({ where: { id: params.mid }, data });
+  let m;
+  try {
+    m = await prisma.projectMilestone.update({ where: { id: params.mid }, data });
+  } catch (e) {
+    // Mốc bị xoá xen giữa lúc kiểm tra và cập nhật (P2025) → 404 thay vì 500.
+    if ((e as { code?: string }).code === "P2025") {
+      return NextResponse.json({ error: "Không tìm thấy mốc" }, { status: 404 });
+    }
+    throw e;
+  }
 
   if (d.paid !== undefined && d.paid !== current.paid) {
     await logActivity(

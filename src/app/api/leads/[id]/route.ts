@@ -32,8 +32,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     try {
       const res = await createProjectFromLead(params.id);
       project = res.project;
-    } catch {
-      // Không chặn cập nhật CRM nếu tạo project lỗi (vd trùng mã hiếm gặp).
+    } catch (err) {
+      // Không chặn cập nhật CRM nếu tạo project lỗi, nhưng LOG lại để còn chẩn
+      // đoán (nếu không sẽ mất project âm thầm: lead "won" mà không có dự án).
+      console.error("[leads:won] auto-create project failed for lead", params.id, err);
     }
   }
 

@@ -229,7 +229,7 @@ function TasksCard({ project, onChange }: { project: Project; onChange: () => vo
       </div>
 
       <div className="grid md:grid-cols-[1fr_140px_140px_auto] gap-2 mt-3">
-        <input className="input" placeholder="Thêm đầu việc…" value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
+        <input className="input" placeholder="Thêm đầu việc…" value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !busy && add()} />
         <input className="input" placeholder="Giao cho" value={assignee} onChange={(e) => setAssignee(e.target.value)} />
         <input type="date" className="input" value={due} onChange={(e) => setDue(e.target.value)} />
         <button className="btn-primary" onClick={add} disabled={busy}>
@@ -494,24 +494,30 @@ const KIND_ICON: Record<string, string> = { note: "📝", stage: "🔀", payment
 
 function ActivityCard({ project, onChange }: { project: Project; onChange: () => void }) {
   const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function add() {
-    if (!note.trim()) return;
-    await fetch(`/api/projects/${project.id}/notes`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: note.trim() }),
-    });
-    setNote("");
-    onChange();
+    if (!note.trim() || busy) return;
+    setBusy(true);
+    try {
+      await fetch(`/api/projects/${project.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: note.trim() }),
+      });
+      setNote("");
+      onChange();
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <div className="card p-5">
       <h2 className="font-semibold mb-3">🗒️ Nhật ký</h2>
       <div className="flex gap-2 mb-3">
-        <input className="input" placeholder="Ghi chú…" value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
-        <button className="btn-primary" onClick={add}>
+        <input className="input" placeholder="Ghi chú…" value={note} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !busy && add()} />
+        <button className="btn-primary" onClick={add} disabled={busy}>
           Ghi
         </button>
       </div>
