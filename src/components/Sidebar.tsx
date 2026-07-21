@@ -13,6 +13,7 @@ const NAV = [
   { href: "/growth", label: "Mục tiêu & Tăng trưởng", icon: "🚀" },
   { href: "/audience", label: "Đánh giá tệp", icon: "🧭" },
   { href: "/crm", label: "CRM chăm khách", icon: "🤝" },
+  { href: "/projects", label: "Dự án (PRJ)", icon: "📁" },
   { href: "/planner", label: "Lịch nội dung", icon: "📅" },
   { href: "/content", label: "Nội dung", icon: "📝" },
   { href: "/repost", label: "Copy từ Instagram", icon: "📸" },

@@ -190,3 +190,105 @@ model PagePositioning {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// ─── PRJ: Quản lý dự án SAU KHI account chốt deal ──────────────
+// Lead ở CRM lên "won" → tạo Project để triển khai, giao việc, theo dõi
+// tiến độ & thanh toán, bàn giao/nghiệm thu.
+model Project {
+  id          String  @id @default(cuid())
+  code        String  @unique // mã dự án hiển thị, vd PRJ-0007
+  name        String
+  description String?
+
+  // Nguồn gốc: từ lead chốt deal (loose FK — không ràng buộc để giữ Lead nguyên vẹn)
+  leadId String? @unique // 1 lead chỉ sinh 1 project
+  pageId String? // fbPageId hoặc Page.id liên quan (tuỳ chọn)
+
+  // Thông tin khách (denormalize để project đứng độc lập kể cả khi lead bị xoá)
+  customerName  String
+  customerPhone String?
+
+  // Kanban giai đoạn triển khai
+  stage    String @default("brief") // brief, doing, review, handover, done, cancelled
+  priority String @default("normal") // low, normal, high
+
+  // Thời gian
+  startDate DateTime?
+  deadline  DateTime?
+
+  // Tài chính (VND) — số đã thu suy ra từ các mốc đã thanh toán
+  contractValue Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks      ProjectTask[]
+  milestones ProjectMilestone[]
+  members    ProjectMember[]
+  activities ProjectActivity[]
+
+  @@index([stage])
+  // leadId đã có index từ @unique ở trên → không cần @@index riêng (tránh trùng).
+}
+
+// Đầu việc trong dự án
+model ProjectTask {
+  id        String    @id @default(cuid())
+  projectId String
+  title     String
+  assignee  String? // tên thành viên phụ trách
+  status    String    @default("todo") // todo, doing, done
+  dueDate   DateTime?
+  order     Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+// Mốc thanh toán (đặt cọc / đợt 2 / nghiệm thu…)
+model ProjectMilestone {
+  id        String    @id @default(cuid())
+  projectId String
+  title     String
+  amount    Int       @default(0) // VND
+  dueDate   DateTime?
+  paid      Boolean   @default(false)
+  paidAt    DateTime?
+  order     Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+// Thành viên team tham gia dự án (giao nhiều người)
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String
+  role      String? // PM, Thiết kế, Ads, Content…
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+// Nhật ký hoạt động / ghi chú của dự án
+model ProjectActivity {
+  id        String   @id @default(cuid())
+  projectId String
+  kind      String   @default("note") // note, stage, payment, task, system
+  message   String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
