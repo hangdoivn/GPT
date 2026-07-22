@@ -20,7 +20,9 @@ cp -a /etc/nginx "${BACKUP}/nginx"
 
 curl -fsSL "${BASE}/index.html" -o "${ROOT}/index.html"
 curl -fsSL "${BASE}/styles.css" -o "${ROOT}/styles.css"
+curl -fsSL "${BASE}/enhancements.css" -o "${ROOT}/enhancements.css"
 curl -fsSL "${BASE}/app.js" -o "${ROOT}/app.js"
+curl -fsSL "${BASE}/enhancements.js" -o "${ROOT}/enhancements.js"
 chown -R www-data:www-data "${ROOT}"
 find "${ROOT}" -type d -exec chmod 755 {} +
 find "${ROOT}" -type f -exec chmod 644 {} +
@@ -43,8 +45,8 @@ server {
     }
 
     location ~* \.(?:css|js)$ {
-        expires 7d;
-        add_header Cache-Control "public, max-age=604800";
+        expires 1h;
+        add_header Cache-Control "public, max-age=3600, must-revalidate";
         try_files \$uri =404;
     }
 
