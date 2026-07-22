@@ -5,7 +5,7 @@ Production-oriented static portfolio for `event.hangdoistudio.vn`.
 ## Content
 
 - 15 Event project folders from Google Drive.
-- 140 selected photographs across project galleries.
+- 130 selected photographs across project galleries.
 - Navy-black / black / yellow Hang Đôi branding.
 - Official Hang Đôi Production logo.
 - Category filters.
