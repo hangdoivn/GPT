@@ -1,4 +1,37 @@
 (() => {
+  const extraAssets = {
+    'easter-day': [
+      '1_uGEaIqUY0tfElge0lkBa5jl111F6g4f',
+      '1Qxf7uGGqNziikwhAKBRdbm0MA5OS1J79',
+      '1gjK2zbcLZ1NfX6rphNvSeaetDWy4D5A3',
+      '1nuNEWRVaMJikrGXbFWTPDSmsAh57L-TN'
+    ],
+    'vin-lang-van': [
+      '1tcmi_y-c0sCvf37-IsXg1IG25u0qylnG',
+      '1MPoy-InDIMbB9uAo3gCWA9vjBCEHXegr'
+    ],
+    'to-nghe-san-khau': [
+      '1WoQ556MPnr3wzBRlYBIx4mipbNu3SZa4',
+      '1E6Y7DQCOpwWa-vTDwEJGzHb2ZjPuzySw'
+    ],
+    'an-toan-giao-thong': [
+      '1Ttm3_cAb33vzHsEDBQAMj5QB4TyKGGuE',
+      '1rWoHTfF59clyMDXfNYkj8QQxWtwo72gw'
+    ],
+    'hoa-hau-du-lich': [
+      '1SjasETHv4IrJ7uLrwlqOwKhJg3Z254s9',
+      '1N4NkyR6rDVrE-zolqi1kIvvyGgkd-YlX'
+    ]
+  };
+
+  Object.entries(extraAssets).forEach(([slug, ids]) => {
+    const project = projects.find(item => item.slug === slug);
+    if (!project) return;
+    ids.forEach(id => {
+      if (!project.images.includes(id)) project.images.push(id);
+    });
+  });
+
   const featuredDetails = {
     'vin-lang-van': {
       copy: 'Coverage một sự kiện ra mắt quy mô lớn, ưu tiên không gian, đám đông, nghi thức và năng lượng thương hiệu.',
@@ -95,7 +128,7 @@
       nextButton.textContent = `${next.title} →`;
       nextButton.onclick = () => {
         const modal = document.querySelector('#projectModal');
-        if (modal) modal.scrollTo({ top: 0, behavior: 'instant' });
+        if (modal) modal.scrollTo({ top: 0, behavior: 'auto' });
         enhancedOpenProject(next);
       };
     }
@@ -124,6 +157,10 @@
   if (featuredIntro) {
     featuredIntro.textContent = 'Bốn case study đại diện cho quy mô lớn, gala doanh nghiệp, hospitality và hoạt động cộng đồng.';
   }
+
+  const assetTotal = projects.reduce((total, project) => total + project.images.length, 0);
+  const assetMeta = document.querySelector('.hero-meta span:nth-child(2)');
+  if (assetMeta) assetMeta.textContent = `${assetTotal}+ hình ảnh`;
 
   renderEnhancedFeatured();
 })();
